@@ -880,6 +880,23 @@ static void HandleMoveSwitching(void)
         MoveSelectionDisplayPpNumber();
         MoveSelectionDisplayMoveType();
     }
+#if WASM
+    else if (JOY_NEW(DPAD_LEFT | DPAD_UP | DPAD_RIGHT | DPAD_DOWN))
+    {
+        // moves are one row of four chips: left/up step back, right/down step forward
+        s8 step = JOY_NEW(DPAD_LEFT | DPAD_UP) ? -1 : 1;
+        s8 next = gMultiUsePlayerCursor + step;
+        if (next >= 0 && next < gNumberOfMovesToChoose)
+        {
+            gMultiUsePlayerCursor = next;
+            PlaySE(SE_SELECT);
+            if (gMultiUsePlayerCursor == gMoveSelectionCursor[gActiveBattler])
+                MoveSelectionCreateCursorAt(gMultiUsePlayerCursor, 0);
+            else
+                MoveSelectionCreateCursorAt(gMultiUsePlayerCursor, 27);
+        }
+    }
+#else
     else if (JOY_NEW(DPAD_LEFT))
     {
         if (gMultiUsePlayerCursor & 1)
@@ -952,6 +969,7 @@ static void HandleMoveSwitching(void)
                 MoveSelectionCreateCursorAt(gMultiUsePlayerCursor, 27);
         }
     }
+#endif
 }
 
 static void SetLinkBattleEndCallbacks(void)
