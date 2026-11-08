@@ -381,23 +381,23 @@ static const struct WindowTemplate sStandardBattleWindowTemplates[] =
         .paletteNum = 0,
         .baseBlock = 0x00b0,
     },
-    [B_WIN_MOD_CHIPS] = {
+    [B_WIN_MOD_CHIPS] = { // unused: the chips row lives in B_WIN_MOD_INFO
         .bg = 0,
         .tilemapLeft = 1,
         .tilemapTop = 54,
         .width = 28,
-        .height = 2,
+        .height = 0,
         .paletteNum = 5,
         .baseBlock = 0x0300,
     },
-    [B_WIN_MOD_INFO] = {
+    [B_WIN_MOD_INFO] = { // whole fight panel: chips row, stats row, two description lines
         .bg = 0,
         .tilemapLeft = 1,
-        .tilemapTop = 56,
+        .tilemapTop = 54,
         .width = 28,
-        .height = 4,
+        .height = 6,
         .paletteNum = 5,
-        .baseBlock = 0x01f8,
+        .baseBlock = 0x0300,
     },
     DUMMY_WIN_TEMPLATE
 };
@@ -611,23 +611,23 @@ static const struct WindowTemplate sBattleArenaWindowTemplates[] =
         .paletteNum = 7,
         .baseBlock = 0x0090,
     },
-    [B_WIN_MOD_CHIPS] = {
+    [B_WIN_MOD_CHIPS] = { // unused: the chips row lives in B_WIN_MOD_INFO
         .bg = 0,
         .tilemapLeft = 1,
         .tilemapTop = 54,
         .width = 28,
-        .height = 2,
+        .height = 0,
         .paletteNum = 5,
         .baseBlock = 0x0300,
     },
-    [B_WIN_MOD_INFO] = {
+    [B_WIN_MOD_INFO] = { // whole fight panel: chips row, stats row, two description lines
         .bg = 0,
         .tilemapLeft = 1,
-        .tilemapTop = 56,
+        .tilemapTop = 54,
         .width = 28,
-        .height = 4,
+        .height = 6,
         .paletteNum = 5,
-        .baseBlock = 0x01f8,
+        .baseBlock = 0x0300,
     },
     DUMMY_WIN_TEMPLATE
 };

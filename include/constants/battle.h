@@ -366,8 +366,8 @@ enum BattlerId
 #define B_WIN_VS_OUTCOME_DRAW    21
 #define B_WIN_VS_OUTCOME_LEFT    22
 #define B_WIN_VS_OUTCOME_RIGHT   23
-#define B_WIN_MOD_CHIPS          24 // MultiplayerEmerald: move chips row (fight menu)
-#define B_WIN_MOD_INFO           25 // MultiplayerEmerald: move info card (type, PP, power, accuracy, description)
+#define B_WIN_MOD_CHIPS          24 // MultiplayerEmerald: unused (merged into B_WIN_MOD_INFO)
+#define B_WIN_MOD_INFO           25 // MultiplayerEmerald: fight panel (move chips, type, PP, power, accuracy, description)
 
 // The following are duplicate id values for windows that Battle Arena uses differently.
 #define ARENA_WIN_PLAYER_NAME      15

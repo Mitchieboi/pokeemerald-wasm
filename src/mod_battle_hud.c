@@ -355,7 +355,7 @@ static u8 TypePill(u8 win, u8 type, s16 x, s16 y, u8 fillIndex, u8 textIndex, u8
     const u8 *name = gTypeNames[type];
     u8 w = GetStringWidth(FONT_SMALL, name, 0) + 8;
     Pill(win, fillIndex, x, y, w, 11);
-    Text(win, FONT_SMALL, x + 4, y - 2, fillIndex, textIndex, shadowIndex, name);
+    Text(win, FONT_SMALL, x + 4, y >= 2 ? y - 2 : 0, fillIndex, textIndex, shadowIndex, name);
     return w;
 }
 
@@ -746,15 +746,33 @@ void ModHud_DrawActionMenu(u8 selected, bool8 safari)
     Finish(B_WIN_ACTION_MENU);
 }
 
+// The fight panel is one 48-row window (B_WIN_MOD_INFO). Row budget, top to bottom:
+//   0        top edge of the panel
+//   2..11    move chips (text printed at y 0 -> glyph rows 4..10)
+//   13..23   type pill + PP / POW / ACC (text at y 11 -> rows 15..21)
+//   25..36   description line 1 (printed at y 22)
+//   36..47   description line 2 (printed at y 33)
+//   47       bottom edge of the panel, drawn last
+// FONT_SMALL glyphs span print y + 3 (tall letters such as "t") to y + 13 (descenders)
+// plus one shadow row, so an 11 px line pitch keeps the lines apart and the second
+// line's descenders end on row 46, inside the window.
 #define CHIP_W 54
 #define CHIP_PITCH 56
+#define CHIP_Y 2
+#define CHIP_H 10
+#define CHIPS_ROWS 13          // rows 0..12 belong to the chips row
+#define INFO_PILL_Y 13
+#define INFO_TEXT_Y 11
+#define DESC_Y1 22
+#define DESC_Y2 33
+#define PANEL_BOTTOM 47
 
 void ModHud_DrawMoveChips(const u16 *moves, u8 selected, u8 swapTarget)
 {
     u32 i;
 
-    FillWindowPixelBuffer(B_WIN_MOD_CHIPS, PIXEL_FILL(M_FILL));
-    Rect(B_WIN_MOD_CHIPS, M_BORDER, 0, 0, 224, 1); // top edge of the panel runs through this window
+    FillWindowPixelRect(B_WIN_MOD_INFO, PIXEL_FILL(M_FILL), 0, 0, 224, CHIPS_ROWS);
+    Rect(B_WIN_MOD_INFO, M_BORDER, 0, 0, 224, 1); // top edge of the panel
     for (i = 0; i < MAX_MON_MOVES; i++)
     {
         s16 cx = 1 + i * CHIP_PITCH;
@@ -767,18 +785,18 @@ void ModHud_DrawMoveChips(const u16 *moves, u8 selected, u8 swapTarget)
         u8 font = FONT_SMALL;
         s16 tw;
 
-        Pill(B_WIN_MOD_CHIPS, fill, cx, 3, CHIP_W, 11);
+        Pill(B_WIN_MOD_INFO, fill, cx, CHIP_Y, CHIP_W, CHIP_H);
         if (target && !sel)
         {
             // outlined chip for the move being swapped with
-            Rect(B_WIN_MOD_CHIPS, M_BORDER, cx + 1, 3, CHIP_W - 2, 1);
-            Rect(B_WIN_MOD_CHIPS, M_BORDER, cx + 1, 13, CHIP_W - 2, 1);
-            Rect(B_WIN_MOD_CHIPS, M_BORDER, cx, 4, 1, 9);
-            Rect(B_WIN_MOD_CHIPS, M_BORDER, cx + CHIP_W - 1, 4, 1, 9);
+            Rect(B_WIN_MOD_INFO, M_BORDER, cx + 1, CHIP_Y, CHIP_W - 2, 1);
+            Rect(B_WIN_MOD_INFO, M_BORDER, cx + 1, CHIP_Y + CHIP_H - 1, CHIP_W - 2, 1);
+            Rect(B_WIN_MOD_INFO, M_BORDER, cx, CHIP_Y + 1, 1, CHIP_H - 2);
+            Rect(B_WIN_MOD_INFO, M_BORDER, cx + CHIP_W - 1, CHIP_Y + 1, 1, CHIP_H - 2);
         }
         if (moves[i] == MOVE_NONE)
         {
-            Text(B_WIN_MOD_CHIPS, FONT_SMALL, cx + CHIP_W / 2 - 2, 1, fill, M_DIM, sh, sText_Dash);
+            Text(B_WIN_MOD_INFO, FONT_SMALL, cx + CHIP_W / 2 - 2, 0, fill, M_DIM, sh, sText_Dash);
             continue;
         }
         name = gMoveNames[moves[i]];
@@ -788,9 +806,9 @@ void ModHud_DrawMoveChips(const u16 *moves, u8 selected, u8 swapTarget)
             font = FONT_SMALL_NARROW;
             tw = GetStringWidth(font, name, 0);
         }
-        Text(B_WIN_MOD_CHIPS, font, cx + (CHIP_W - tw) / 2, 1, fill, fg, sh, name);
+        Text(B_WIN_MOD_INFO, font, cx + (CHIP_W - tw) / 2, 0, fill, fg, sh, name);
     }
-    Finish(B_WIN_MOD_CHIPS);
+    Finish(B_WIN_MOD_INFO);
 }
 
 static void SetMenuTypeColor(u8 type)
@@ -809,16 +827,16 @@ void ModHud_DrawMoveInfo(u16 move, u8 pp, u8 maxPp)
     u8 ppColor = M_TEXT;
     const u8 *desc;
 
-    FillWindowPixelBuffer(B_WIN_MOD_INFO, PIXEL_FILL(M_FILL));
-    Rect(B_WIN_MOD_INFO, M_BORDER, 0, 31, 224, 1); // bottom edge of the panel
+    FillWindowPixelRect(B_WIN_MOD_INFO, PIXEL_FILL(M_FILL), 0, CHIPS_ROWS, 224, PANEL_BOTTOM + 1 - CHIPS_ROWS);
     if (move == MOVE_NONE || move >= MOVES_COUNT)
     {
+        Rect(B_WIN_MOD_INFO, M_BORDER, 0, PANEL_BOTTOM, 224, 1);
         Finish(B_WIN_MOD_INFO);
         return;
     }
 
     SetMenuTypeColor(gBattleMoves[move].type);
-    x += TypePill(B_WIN_MOD_INFO, gBattleMoves[move].type, x, 2, M_TYPE, M_TEXT, M_SHADOW) + 6;
+    x += TypePill(B_WIN_MOD_INFO, gBattleMoves[move].type, x, INFO_PILL_Y, M_TYPE, M_TEXT, M_SHADOW) + 6;
 
     if (pp == 0) ppColor = M_PP_NONE;
     else if (pp * 4 <= maxPp) ppColor = M_PP_LOW;
@@ -826,7 +844,7 @@ void ModHud_DrawMoveInfo(u16 move, u8 pp, u8 maxPp)
     p = ConvertIntToDecimalStringN(p, pp, STR_CONV_MODE_LEFT_ALIGN, 2);
     p = StringCopy(p, sText_Slash);
     ConvertIntToDecimalStringN(p, maxPp, STR_CONV_MODE_LEFT_ALIGN, 2);
-    Text(B_WIN_MOD_INFO, FONT_SMALL, x, 0, M_FILL, ppColor, M_SHADOW, text);
+    Text(B_WIN_MOD_INFO, FONT_SMALL, x, INFO_TEXT_Y, M_FILL, ppColor, M_SHADOW, text);
     x += GetStringWidth(FONT_SMALL, text, 0) + 10;
 
     p = StringCopy(text, sText_POW);
@@ -834,7 +852,7 @@ void ModHud_DrawMoveInfo(u16 move, u8 pp, u8 maxPp)
         StringCopy(p, sText_NoValue);
     else
         ConvertIntToDecimalStringN(p, gBattleMoves[move].power, STR_CONV_MODE_LEFT_ALIGN, 3);
-    Text(B_WIN_MOD_INFO, FONT_SMALL, x, 0, M_FILL, M_TEXT, M_SHADOW, text);
+    Text(B_WIN_MOD_INFO, FONT_SMALL, x, INFO_TEXT_Y, M_FILL, M_TEXT, M_SHADOW, text);
     x += GetStringWidth(FONT_SMALL, text, 0) + 10;
 
     p = StringCopy(text, sText_ACC);
@@ -845,40 +863,41 @@ void ModHud_DrawMoveInfo(u16 move, u8 pp, u8 maxPp)
         p = ConvertIntToDecimalStringN(p, gBattleMoves[move].accuracy, STR_CONV_MODE_LEFT_ALIGN, 3);
         StringCopy(p, sText_Percent);
     }
-    Text(B_WIN_MOD_INFO, FONT_SMALL, x, 0, M_FILL, M_TEXT, M_SHADOW, text);
+    Text(B_WIN_MOD_INFO, FONT_SMALL, x, INFO_TEXT_Y, M_FILL, M_TEXT, M_SHADOW, text);
 
     desc = gMoveDescriptionPointers[move - 1];
     {
-        // print the two lines separately so the line pitch is 8 px
         u8 line[40];
         u32 i = 0, n = 0;
         while (desc[i] != EOS && desc[i] != CHAR_NEWLINE && n < sizeof(line) - 1)
             line[n++] = desc[i++];
         line[n] = EOS;
-        Text(B_WIN_MOD_INFO, FONT_SMALL, 2, 11, M_FILL, M_TEXT, M_SHADOW, line);
+        Text(B_WIN_MOD_INFO, FONT_SMALL, 2, DESC_Y1, M_FILL, M_TEXT, M_SHADOW, line);
         if (desc[i] == CHAR_NEWLINE)
         {
             i++; n = 0;
             while (desc[i] != EOS && desc[i] != CHAR_NEWLINE && n < sizeof(line) - 1)
                 line[n++] = desc[i++];
             line[n] = EOS;
-            Text(B_WIN_MOD_INFO, FONT_SMALL, 2, 20, M_FILL, M_TEXT, M_SHADOW, line);
+            Text(B_WIN_MOD_INFO, FONT_SMALL, 2, DESC_Y2, M_FILL, M_TEXT, M_SHADOW, line);
         }
     }
+    // Drawn last so descender shadows on the last row do not notch the panel edge.
+    Rect(B_WIN_MOD_INFO, M_BORDER, 0, PANEL_BOTTOM, 224, 1);
     Finish(B_WIN_MOD_INFO);
 }
 
 void ModHud_DrawSwitchPrompt(void)
 {
-    FillWindowPixelBuffer(B_WIN_MOD_INFO, PIXEL_FILL(M_FILL));
-    Rect(B_WIN_MOD_INFO, M_BORDER, 0, 31, 224, 1);
-    Text(B_WIN_MOD_INFO, FONT_NORMAL, 2, 6, M_FILL, M_TEXT, M_SHADOW, sText_SwitchWhich);
+    // Replaces the stats + description area; the chips row above stays visible.
+    FillWindowPixelRect(B_WIN_MOD_INFO, PIXEL_FILL(M_FILL), 0, CHIPS_ROWS, 224, PANEL_BOTTOM + 1 - CHIPS_ROWS);
+    Rect(B_WIN_MOD_INFO, M_BORDER, 0, PANEL_BOTTOM, 224, 1);
+    Text(B_WIN_MOD_INFO, FONT_NORMAL, 2, CHIPS_ROWS + 8, M_FILL, M_TEXT, M_SHADOW, sText_SwitchWhich);
     Finish(B_WIN_MOD_INFO);
 }
 
 void ModHud_ClearFightMenu(void)
 {
-    ClearWindowTilemap(B_WIN_MOD_CHIPS);
     ClearWindowTilemap(B_WIN_MOD_INFO);
     CopyBgTilemapBufferToVram(0);
 }
