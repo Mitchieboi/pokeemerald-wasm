@@ -21,7 +21,13 @@ source tree and behavior as much as possible.
 
 - `make wasm` builds `build/wasm/pokeemerald.wasm`.
 - `make serve-wasm` builds the WASM target and serves the browser frontend.
-- Browser runtime code lives in `web/`.
+- Browser runtime code lives in `web/`:
+  - `web/emulator/`: the reusable emulator library (`emulator.js` factory,
+    `bios.js` host imports, `save.js` flash validation/migration, `input.js`,
+    `audio.js` + `audio-worklet.js`). It has no DOM dependencies beyond the
+    canvas it is given, so other front ends can embed it.
+  - `web/app.js` + `web/index.html`: the dev page, a thin consumer of the
+    library (also used by `tools/wasm_replay.mjs` via `?automate=1`).
 - The desktop/native port lives in `tools/native/`:
   - `native_engine.h` / `native_engine.c`: headless engine core (direct C
     build, native BIOS shims, pad input, flash saves, framebuffer

@@ -17,6 +17,8 @@ class PokeemeraldAudioProcessor extends AudioWorkletProcessor {
     this._R = new Float32Array(RING_SIZE);
     this._write = 0;
     this._read = 0;
+    this._underruns = 0;
+    this._blocks = 0;
 
     this.port.onmessage = ({ data: { L, R } }) => {
       const avail = (this._write - this._read) & (RING_SIZE * 2 - 1);
@@ -47,6 +49,13 @@ class PokeemeraldAudioProcessor extends AudioWorkletProcessor {
     if (toDrain < n) {
       L.fill(0, toDrain);
       R.fill(0, toDrain);
+      this._underruns++;
+    }
+    // Report underruns about once a second so the host can expose audio health.
+    if (++this._blocks >= 375) {
+      if (this._underruns) this.port.postMessage({ type: 'underrun', count: this._underruns });
+      this._underruns = 0;
+      this._blocks = 0;
     }
     return true;
   }
