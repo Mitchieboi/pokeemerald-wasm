@@ -1,5 +1,8 @@
 #include "global.h"
 #if WASM
+#include "mod/mod_nuzlocke.h"
+#endif
+#if WASM
 #include "mod/mod_randomizer.h"
 #define TRAINER_SPECIES(x) ModRandomizeSpecies(MOD_RAND_GROUP_TRAINER, x)
 #else
@@ -626,6 +629,9 @@ static void CB2_InitBattleInternal(void)
 {
     s32 i;
 
+#if WASM
+    ModNuzlockeOnBattleStart();
+#endif
     SetHBlankCallback(NULL);
     SetVBlankCallback(NULL);
 
@@ -5236,6 +5242,9 @@ static void ReturnFromBattleToOverworld(void)
         return;
 
     gSpecialVar_Result = gBattleOutcome;
+#if WASM
+    ModNuzlockeOnBattleEnd();
+#endif
     gMain.inBattle = FALSE;
     gMain.callback1 = gPreBattleCallback1;
 

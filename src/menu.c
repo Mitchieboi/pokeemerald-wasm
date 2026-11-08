@@ -485,8 +485,10 @@ u8 GetPlayerTextSpeedDelay(void)
 {
     u32 speed;
 #if WASM
+    // Instant text prints every character of a line per frame (see RunTextPrinters);
+    // the printer itself runs at FAST so page breaks and pauses still work.
     if (ModQolInstantText())
-        return 0;
+        return sTextSpeedFrameDelays[OPTIONS_TEXT_SPEED_FAST];
 #endif
     if (gSaveBlock2Ptr->optionsTextSpeed > OPTIONS_TEXT_SPEED_FAST)
         gSaveBlock2Ptr->optionsTextSpeed = OPTIONS_TEXT_SPEED_MID;

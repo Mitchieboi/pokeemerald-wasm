@@ -1,6 +1,7 @@
 #include "global.h"
 #if WASM
 #include "mod/mod_randomizer.h"
+#include "mod/mod_nuzlocke.h"
 #endif
 #include "malloc.h"
 #include "apprentice.h"
@@ -4777,6 +4778,10 @@ bool8 PokemonUseItemEffects(struct Pokemon *mon, u16 item, u8 partyIndex, u8 mov
     s8 evChange;
     u16 evCount;
 
+#if WASM
+    if (ModNuzlockeBlocksItem(item))
+        return TRUE; // "It won't have any effect."
+#endif
     // Get item hold effect
     heldItem = GetMonData(mon, MON_DATA_HELD_ITEM, NULL);
     if (heldItem == ITEM_ENIGMA_BERRY)
@@ -4923,8 +4928,13 @@ bool8 PokemonUseItemEffects(struct Pokemon *mon, u16 item, u8 partyIndex, u8 mov
             }
 
             // Rare Candy
+#if WASM
+            if ((itemEffect[i] & ITEM3_LEVEL_UP)
+             && GetMonData(mon, MON_DATA_LEVEL, NULL) < ModNuzlockeLevelCap())
+#else
             if ((itemEffect[i] & ITEM3_LEVEL_UP)
              && GetMonData(mon, MON_DATA_LEVEL, NULL) != MAX_LEVEL)
+#endif
             {
                 dataUnsigned = gExperienceTables[gSpeciesInfo[GetMonData(mon, MON_DATA_SPECIES, NULL)].growthRate][GetMonData(mon, MON_DATA_LEVEL, NULL) + 1];
                 SetMonData(mon, MON_DATA_EXP, &dataUnsigned);

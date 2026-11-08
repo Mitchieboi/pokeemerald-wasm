@@ -1,4 +1,7 @@
 #include "global.h"
+#if WASM
+#include "mod/mod_nuzlocke.h"
+#endif
 #include "battle.h"
 #include "battle_pike.h"
 #include "battle_pyramid.h"
@@ -73,6 +76,9 @@ static void Task_TryFieldPoisonWhiteOut(u8 taskId)
             if (MonFaintedFromPoison(tPartyIdx))
             {
                 FaintFromFieldPoison(tPartyIdx);
+#if WASM
+                ModNuzlockeOnFieldFaint(tPartyIdx);
+#endif
                 ShowFieldMessage(gText_PkmnFainted_FldPsn);
                 tState++;
                 return;
@@ -86,6 +92,9 @@ static void Task_TryFieldPoisonWhiteOut(u8 taskId)
             tState--;
         break;
     case 2:
+#if WASM
+        ModNuzlockeAfterFieldPoison(AllMonsFainted());
+#endif
         if (AllMonsFainted())
         {
             // Battle facilities have their own white out script to handle the challenge loss

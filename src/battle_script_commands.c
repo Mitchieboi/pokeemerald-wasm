@@ -1,4 +1,7 @@
 #include "global.h"
+#if WASM
+#include "mod/mod_nuzlocke.h"
+#endif
 #include "battle.h"
 #include "battle_message.h"
 #include "battle_anim.h"
@@ -3010,6 +3013,9 @@ static void Cmd_tryfaintmon(void)
                 if (gBattleResults.playerFaintCounter < 255)
                     gBattleResults.playerFaintCounter++;
                 AdjustFriendshipOnBattleFaint(gActiveBattler);
+#if WASM
+                ModNuzlockeOnPlayerMonFainted(gBattlerPartyIndexes[gActiveBattler]);
+#endif
             }
             else
             {
@@ -3348,7 +3354,11 @@ static void Cmd_getexp(void)
                 gBattleScripting.getexpState = 5;
                 gBattleMoveDamage = 0; // used for exp
             }
+#if WASM
+            else if (GetMonData(&gPlayerParty[gBattleStruct->expGetterMonId], MON_DATA_LEVEL) >= ModNuzlockeLevelCap())
+#else
             else if (GetMonData(&gPlayerParty[gBattleStruct->expGetterMonId], MON_DATA_LEVEL) == MAX_LEVEL)
+#endif
             {
                 *(&gBattleStruct->sentInPokes) >>= 1;
                 gBattleScripting.getexpState = 5;
@@ -3428,7 +3438,12 @@ static void Cmd_getexp(void)
         if (gBattleControllerExecFlags == 0)
         {
             gBattleBufferB[gBattleStruct->expGetterBattlerId][0] = 0;
+#if WASM
+            gBattleMoveDamage = ModNuzlockeClampExp(&gPlayerParty[gBattleStruct->expGetterMonId], gBattleMoveDamage);
+            if (GetMonData(&gPlayerParty[gBattleStruct->expGetterMonId], MON_DATA_HP) && GetMonData(&gPlayerParty[gBattleStruct->expGetterMonId], MON_DATA_LEVEL) < ModNuzlockeLevelCap())
+#else
             if (GetMonData(&gPlayerParty[gBattleStruct->expGetterMonId], MON_DATA_HP) && GetMonData(&gPlayerParty[gBattleStruct->expGetterMonId], MON_DATA_LEVEL) != MAX_LEVEL)
+#endif
             {
                 gBattleResources->beforeLvlUp->stats[STAT_HP]    = GetMonData(&gPlayerParty[gBattleStruct->expGetterMonId], MON_DATA_MAX_HP);
                 gBattleResources->beforeLvlUp->stats[STAT_ATK]   = GetMonData(&gPlayerParty[gBattleStruct->expGetterMonId], MON_DATA_ATK);
@@ -9918,6 +9933,15 @@ static void Cmd_handleballthrow(void)
         MarkBattlerForControllerExec(gActiveBattler);
         gBattlescriptCurrInstr = BattleScript_TrainerBallBlock;
     }
+#if WASM
+    else if (ModNuzlockeShouldBlockBall())
+    {
+        AddBagItem(gLastUsedItem, 1); // the ball is not consumed
+        BtlController_EmitBallThrowAnim(B_COMM_TO_CONTROLLER, BALL_TRAINER_BLOCK);
+        MarkBattlerForControllerExec(gActiveBattler);
+        gBattlescriptCurrInstr = BattleScript_NuzlockeBallBlock;
+    }
+#endif
     else if (gBattleTypeFlags & BATTLE_TYPE_WALLY_TUTORIAL)
     {
         BtlController_EmitBallThrowAnim(B_COMM_TO_CONTROLLER, BALL_3_SHAKES_SUCCESS);
@@ -10229,6 +10253,15 @@ static void Cmd_trygivecaughtmonnick(void)
     switch (gBattleCommunication[MULTIUSE_STATE])
     {
     case 0:
+#if WASM
+        if (ModNuzlockeForceNickname())
+        {
+            // Nicknames are mandatory: skip the yes/no box and go straight to naming.
+            gBattleCommunication[MULTIUSE_STATE] = 2;
+            BeginFastPaletteFade(3);
+            break;
+        }
+#endif
         HandleBattleWindow(YESNOBOX_X_Y, 0);
         BattlePutTextOnWindow(gText_BattleYesNoChoice, B_WIN_YESNO);
         gBattleCommunication[MULTIUSE_STATE]++;

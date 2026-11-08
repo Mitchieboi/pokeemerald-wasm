@@ -1,4 +1,7 @@
 #include "global.h"
+#if WASM
+#include "mod/mod_qol.h"
+#endif
 #include "battle.h"
 #include "main.h"
 #include "m4a.h"
@@ -327,6 +330,23 @@ void RunTextPrinters(void)
             if (sTextPrinters[i].active)
             {
                 u16 renderCmd = RenderFont(&sTextPrinters[i]);
+#if WASM
+                if (ModQolInstantText())
+                {
+                    // Keep rendering characters until the printer finishes or reaches a
+                    // wait/pause/scroll state, so page breaks and button prompts still work.
+                    u32 guard = 0;
+                    bool8 printed = (renderCmd == RENDER_PRINT);
+                    while (renderCmd != RENDER_FINISH && sTextPrinters[i].state == RENDER_STATE_HANDLE_CHAR && guard++ < 1024)
+                    {
+                        renderCmd = RenderFont(&sTextPrinters[i]);
+                        if (renderCmd == RENDER_PRINT)
+                            printed = TRUE;
+                    }
+                    if (printed && renderCmd != RENDER_PRINT)
+                        CopyWindowToVram(sTextPrinters[i].printerTemplate.windowId, COPYWIN_GFX);
+                }
+#endif
                 switch (renderCmd)
                 {
                 case RENDER_PRINT:

@@ -1,4 +1,7 @@
 #include "global.h"
+#if WASM
+#include "mod/mod_nuzlocke.h"
+#endif
 #include "battle_setup.h"
 #include "bike.h"
 #include "coord_event_weather.h"
@@ -144,6 +147,10 @@ int ProcessPlayerFieldInput(struct FieldInput *input)
     GetPlayerPosition(&position);
     metatileBehavior = MapGridGetMetatileBehaviorAt(position.x, position.y);
 
+#if WASM
+    if (ModNuzlockeTryShowDeathMessages())
+        return TRUE;
+#endif
     if (CheckForTrainersWantingBattle() == TRUE)
         return TRUE;
 
