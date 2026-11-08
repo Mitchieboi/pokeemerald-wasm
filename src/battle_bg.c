@@ -1,4 +1,7 @@
 #include "global.h"
+#if WASM
+#include "mod/mod_battle_hud.h"
+#endif
 #include "battle.h"
 #include "battle_bg.h"
 #include "battle_main.h"
@@ -378,14 +381,23 @@ static const struct WindowTemplate sStandardBattleWindowTemplates[] =
         .paletteNum = 0,
         .baseBlock = 0x00b0,
     },
-    [B_WIN_MOVE_DESCRIPTION] = {
+    [B_WIN_MOD_CHIPS] = {
         .bg = 0,
         .tilemapLeft = 1,
-        .tilemapTop = 55,
-        .width = 18,
+        .tilemapTop = 54,
+        .width = 28,
+        .height = 2,
+        .paletteNum = 5,
+        .baseBlock = 0x0300,
+    },
+    [B_WIN_MOD_INFO] = {
+        .bg = 0,
+        .tilemapLeft = 1,
+        .tilemapTop = 56,
+        .width = 28,
         .height = 4,
         .paletteNum = 5,
-        .baseBlock = 0x03a0,
+        .baseBlock = 0x01f8,
     },
     DUMMY_WIN_TEMPLATE
 };
@@ -599,14 +611,23 @@ static const struct WindowTemplate sBattleArenaWindowTemplates[] =
         .paletteNum = 7,
         .baseBlock = 0x0090,
     },
-    [B_WIN_MOVE_DESCRIPTION] = {
+    [B_WIN_MOD_CHIPS] = {
         .bg = 0,
         .tilemapLeft = 1,
-        .tilemapTop = 55,
-        .width = 18,
+        .tilemapTop = 54,
+        .width = 28,
+        .height = 2,
+        .paletteNum = 5,
+        .baseBlock = 0x0300,
+    },
+    [B_WIN_MOD_INFO] = {
+        .bg = 0,
+        .tilemapLeft = 1,
+        .tilemapTop = 56,
+        .width = 28,
         .height = 4,
         .paletteNum = 5,
-        .baseBlock = 0x03a0,
+        .baseBlock = 0x01f8,
     },
     DUMMY_WIN_TEMPLATE
 };
@@ -764,6 +785,9 @@ void LoadBattleMenuWindowGfx(void)
     LoadUserWindowBorderGfx(2, 0x12, BG_PLTT_ID(1));
     LoadUserWindowBorderGfx(2, 0x22, BG_PLTT_ID(1));
     LoadCompressedPalette(gBattleWindowTextPalette, BG_PLTT_ID(5), PLTT_SIZE_4BPP);
+#if WASM
+    ModHud_LoadPanelPalettes();
+#endif
 
     if (gBattleTypeFlags & BATTLE_TYPE_ARENA)
     {
@@ -878,8 +902,14 @@ void LoadBattleTextboxAndBackground(void)
 {
     LZDecompressVram(gBattleTextboxTiles, (void *)(BG_CHAR_ADDR(0)));
     CopyToBgTilemapBuffer(0, gBattleTextboxTilemap, 0, 0);
+#if WASM
+    ModHud_LoadPanel();
+#endif
     CopyBgTilemapBufferToVram(0);
     LoadCompressedPalette(gBattleTextboxPalette, BG_PLTT_ID(0), 2 * PLTT_SIZE_4BPP);
+#if WASM
+    ModHud_LoadPanelPalettes();
+#endif
     LoadBattleMenuWindowGfx();
     DrawMainBattleBackground();
 }
@@ -1235,10 +1265,16 @@ bool8 LoadChosenBattleElement(u8 caseId)
         break;
     case 1:
         CopyToBgTilemapBuffer(0, gBattleTextboxTilemap, 0, 0);
+#if WASM
+    ModHud_LoadPanel();
+#endif
         CopyBgTilemapBufferToVram(0);
         break;
     case 2:
         LoadCompressedPalette(gBattleTextboxPalette, BG_PLTT_ID(0), 2 * PLTT_SIZE_4BPP);
+#if WASM
+    ModHud_LoadPanelPalettes();
+#endif
         break;
     case 3:
         if (gBattleTypeFlags & (BATTLE_TYPE_FRONTIER | BATTLE_TYPE_LINK | BATTLE_TYPE_RECORDED_LINK | BATTLE_TYPE_EREADER_TRAINER))

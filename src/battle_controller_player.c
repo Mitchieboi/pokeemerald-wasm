@@ -1,7 +1,6 @@
 #include "global.h"
 #if WASM
-#include "mod/mod_ui_types.h"
-#include "pokemon_summary_screen.h"
+#include "mod/mod_battle_hud.h"
 #endif
 #include "battle.h"
 #include "battle_anim.h"
@@ -111,19 +110,6 @@ static void MoveSelectionDisplayPpString(void);
 static void MoveSelectionDisplayMoveType(void);
 static void MoveSelectionDisplayMoveNames(void);
 static void HandleMoveSwitching(void);
-static void HandleChooseMoveAfterDma3(void);
-#if WASM
-static void ModMoveInfo_ShowDescription(void);
-static void ModMoveInfo_HideDescription(void);
-static void ModMoveInfo_ShowTypeIcon(u8 type);
-static void SpriteCB_ModMoveTypeIcon(struct Sprite *sprite);
-static bool8 sModDescShown;
-static u8 sModMoveTypeIconId = SPRITE_NONE;
-static const u8 sModText_Empty[] = _("");
-static const u8 sModText_NoValue[] = _("--");
-static const u8 sModText_Slash[] = _(" / ");
-static const u8 sModText_Percent[] = _("%");
-#endif
 static void SwitchIn_HandleSoundAndEnd(void);
 static void WaitForMonSelection(void);
 static void CompleteWhenChoseItem(void);
@@ -541,20 +527,6 @@ static void HandleInputChooseMove(void)
     else
         gPlayerDpadHoldFrames = 0;
 
-#if WASM
-    if (JOY_NEW(L_BUTTON) || JOY_NEW(R_BUTTON))
-    {
-        PlaySE(SE_SELECT);
-        if (sModDescShown)
-            ModMoveInfo_HideDescription();
-        else
-            ModMoveInfo_ShowDescription();
-        return;
-    }
-    if (sModDescShown && (JOY_NEW(A_BUTTON | B_BUTTON | SELECT_BUTTON | START_BUTTON)))
-        ModMoveInfo_HideDescription();
-#endif
-
     if (JOY_NEW(A_BUTTON))
     {
         u8 moveTarget;
@@ -628,6 +600,17 @@ static void HandleInputChooseMove(void)
     }
     else if (JOY_NEW(DPAD_LEFT))
     {
+#if WASM
+        // moves are one row of four chips
+        if (gMoveSelectionCursor[gActiveBattler] > 0)
+        {
+            gMoveSelectionCursor[gActiveBattler]--;
+            PlaySE(SE_SELECT);
+            MoveSelectionCreateCursorAt(gMoveSelectionCursor[gActiveBattler], 0);
+            MoveSelectionDisplayPpNumber();
+            MoveSelectionDisplayMoveType();
+        }
+#else
         if (gMoveSelectionCursor[gActiveBattler] & 1)
         {
             MoveSelectionDestroyCursorAt(gMoveSelectionCursor[gActiveBattler]);
@@ -637,9 +620,21 @@ static void HandleInputChooseMove(void)
             MoveSelectionDisplayPpNumber();
             MoveSelectionDisplayMoveType();
         }
+#endif
     }
     else if (JOY_NEW(DPAD_RIGHT))
     {
+#if WASM
+        // moves are one row of four chips
+        if (gMoveSelectionCursor[gActiveBattler] + 1 < gNumberOfMovesToChoose)
+        {
+            gMoveSelectionCursor[gActiveBattler]++;
+            PlaySE(SE_SELECT);
+            MoveSelectionCreateCursorAt(gMoveSelectionCursor[gActiveBattler], 0);
+            MoveSelectionDisplayPpNumber();
+            MoveSelectionDisplayMoveType();
+        }
+#else
         if (!(gMoveSelectionCursor[gActiveBattler] & 1)
          && (gMoveSelectionCursor[gActiveBattler] ^ 1) < gNumberOfMovesToChoose)
         {
@@ -650,9 +645,21 @@ static void HandleInputChooseMove(void)
             MoveSelectionDisplayPpNumber();
             MoveSelectionDisplayMoveType();
         }
+#endif
     }
     else if (JOY_NEW(DPAD_UP))
     {
+#if WASM
+        // moves are one row of four chips
+        if (gMoveSelectionCursor[gActiveBattler] > 0)
+        {
+            gMoveSelectionCursor[gActiveBattler]--;
+            PlaySE(SE_SELECT);
+            MoveSelectionCreateCursorAt(gMoveSelectionCursor[gActiveBattler], 0);
+            MoveSelectionDisplayPpNumber();
+            MoveSelectionDisplayMoveType();
+        }
+#else
         if (gMoveSelectionCursor[gActiveBattler] & 2)
         {
             MoveSelectionDestroyCursorAt(gMoveSelectionCursor[gActiveBattler]);
@@ -662,9 +669,21 @@ static void HandleInputChooseMove(void)
             MoveSelectionDisplayPpNumber();
             MoveSelectionDisplayMoveType();
         }
+#endif
     }
     else if (JOY_NEW(DPAD_DOWN))
     {
+#if WASM
+        // moves are one row of four chips
+        if (gMoveSelectionCursor[gActiveBattler] + 1 < gNumberOfMovesToChoose)
+        {
+            gMoveSelectionCursor[gActiveBattler]++;
+            PlaySE(SE_SELECT);
+            MoveSelectionCreateCursorAt(gMoveSelectionCursor[gActiveBattler], 0);
+            MoveSelectionDisplayPpNumber();
+            MoveSelectionDisplayMoveType();
+        }
+#else
         if (!(gMoveSelectionCursor[gActiveBattler] & 2)
          && (gMoveSelectionCursor[gActiveBattler] ^ 2) < gNumberOfMovesToChoose)
         {
@@ -675,6 +694,7 @@ static void HandleInputChooseMove(void)
             MoveSelectionDisplayPpNumber();
             MoveSelectionDisplayMoveType();
         }
+#endif
     }
     else if (JOY_NEW(SELECT_BUTTON))
     {
@@ -688,7 +708,13 @@ static void HandleInputChooseMove(void)
                 gMultiUsePlayerCursor = gMoveSelectionCursor[gActiveBattler] + 1;
 
             MoveSelectionCreateCursorAt(gMultiUsePlayerCursor, 27);
+            
+#if WASM
+            ModHud_DrawSwitchPrompt();
+#else
             BattlePutTextOnWindow(gText_BattleSwitchWhich, B_WIN_SWITCH_PROMPT);
+#endif
+
             gBattlerControllerFuncs[gActiveBattler] = HandleMoveSwitching;
         }
     }
@@ -1539,6 +1565,13 @@ static void MoveSelectionDisplayMoveNames(void)
     struct ChooseMoveStruct *moveInfo = (struct ChooseMoveStruct *)(&gBattleBufferA[gActiveBattler][4]);
     gNumberOfMovesToChoose = 0;
 
+#if WASM
+    for (i = 0; i < MAX_MON_MOVES; i++)
+        if (moveInfo->moves[i] != MOVE_NONE)
+            gNumberOfMovesToChoose++;
+    ModHud_DrawMoveChips(moveInfo->moves, gMoveSelectionCursor[gActiveBattler], 0xFF);
+    return;
+#endif
     for (i = 0; i < MAX_MON_MOVES; i++)
     {
         MoveSelectionDestroyCursorAt(i);
@@ -1553,12 +1586,10 @@ static void MoveSelectionDisplayMoveNames(void)
 static void MoveSelectionDisplayPpString(void)
 {
 #if WASM
-    // The move's type icon sits where "PP" used to be; the numbers stay in B_WIN_PP_REMAINING.
-    BattlePutTextOnWindow(sModText_Empty, B_WIN_PP);
-#else
+    return;
+#endif
     StringCopy(gDisplayedStringBattle, gText_MoveInterfacePP);
     BattlePutTextOnWindow(gDisplayedStringBattle, B_WIN_PP);
-#endif
 }
 
 static void MoveSelectionDisplayPpNumber(void)
@@ -1566,6 +1597,9 @@ static void MoveSelectionDisplayPpNumber(void)
     u8 *txtPtr;
     struct ChooseMoveStruct *moveInfo;
 
+#if WASM
+    return; // PP is part of the move info card
+#endif
     if (gBattleBufferA[gActiveBattler][2] == TRUE) // check if we didn't want to display pp number
         return;
 
@@ -1582,32 +1616,14 @@ static void MoveSelectionDisplayMoveType(void)
 {
     u8 *txtPtr;
     struct ChooseMoveStruct *moveInfo = (struct ChooseMoveStruct *)(&gBattleBufferA[gActiveBattler][4]);
+
 #if WASM
-    u16 move = moveInfo->moves[gMoveSelectionCursor[gActiveBattler]];
-    u8 power = gBattleMoves[move].power;
-    u8 accuracy = gBattleMoves[move].accuracy;
-
-    ModMoveInfo_ShowTypeIcon(gBattleMoves[move].type);
-    // "40 / 100%" : power / accuracy ("--" for status moves and never-miss moves)
-    txtPtr = gDisplayedStringBattle;
-    if (power == 0)
-        txtPtr = StringCopy(txtPtr, sModText_NoValue);
-    else
-        txtPtr = ConvertIntToDecimalStringN(txtPtr, power, STR_CONV_MODE_LEFT_ALIGN, 3);
-    txtPtr = StringCopy(txtPtr, sModText_Slash);
-    if (accuracy == 0)
-        txtPtr = StringCopy(txtPtr, sModText_NoValue);
-    else
     {
-        txtPtr = ConvertIntToDecimalStringN(txtPtr, accuracy, STR_CONV_MODE_LEFT_ALIGN, 3);
-        txtPtr = StringCopy(txtPtr, sModText_Percent);
+        u8 cursor = gMoveSelectionCursor[gActiveBattler];
+        ModHud_DrawMoveInfo(moveInfo->moves[cursor], moveInfo->currentPp[cursor], moveInfo->maxPp[cursor]);
+        return;
     }
-    BattlePutTextOnWindow(gDisplayedStringBattle, B_WIN_MOVE_TYPE);
-    if (sModDescShown)
-        ModMoveInfo_ShowDescription();
-    return;
 #endif
-
     txtPtr = StringCopy(gDisplayedStringBattle, gText_MoveInterfaceType);
     *(txtPtr)++ = EXT_CTRL_CODE_BEGIN;
     *(txtPtr)++ = EXT_CTRL_CODE_FONT;
@@ -1617,61 +1633,21 @@ static void MoveSelectionDisplayMoveType(void)
     BattlePutTextOnWindow(gDisplayedStringBattle, B_WIN_MOVE_TYPE);
 }
 
-#if WASM
-static void ModMoveInfo_ShowDescription(void)
-{
-    struct ChooseMoveStruct *moveInfo = (struct ChooseMoveStruct *)(&gBattleBufferA[gActiveBattler][4]);
-    u16 move = moveInfo->moves[gMoveSelectionCursor[gActiveBattler]];
-
-    if (move == MOVE_NONE || move >= MOVES_COUNT)
-        return;
-    BattlePutTextOnWindow(gMoveDescriptionPointers[move - 1], B_WIN_MOVE_DESCRIPTION);
-    sModDescShown = TRUE;
-}
-
-static void ModMoveInfo_HideDescription(void)
-{
-    if (!sModDescShown)
-        return;
-    sModDescShown = FALSE;
-    ClearWindowTilemap(B_WIN_MOVE_DESCRIPTION);
-    MoveSelectionDisplayMoveNames();
-    MoveSelectionCreateCursorAt(gMoveSelectionCursor[gActiveBattler], 0);
-}
-
-static void SpriteCB_ModMoveTypeIcon(struct Sprite *sprite)
-{
-    u8 battler = sprite->data[0];
-    void (*func)(void) = gBattlerControllerFuncs[battler];
-
-    if (func != HandleInputChooseMove && func != HandleMoveSwitching && func != HandleChooseMoveAfterDma3)
-    {
-        if (sModMoveTypeIconId == sprite - gSprites)
-            sModMoveTypeIconId = SPRITE_NONE;
-        DestroySprite(sprite);
-        return;
-    }
-    sprite->invisible = (func == HandleMoveSwitching);
-}
-
-static void ModMoveInfo_ShowTypeIcon(u8 type)
-{
-    u8 id;
-
-    ModTypeIcon_Destroy(&sModMoveTypeIconId);
-    // Over the former "PP" label: window (21,55) 4x2 tiles, shown at the bottom of the screen.
-    id = ModTypeIcon_Create(type, 184, 136, 0, 0);
-    if (id == SPRITE_NONE)
-        return;
-    gSprites[id].data[0] = gActiveBattler;
-    gSprites[id].callback = SpriteCB_ModMoveTypeIcon;
-    sModMoveTypeIconId = id;
-}
-#endif
-
 static void MoveSelectionCreateCursorAt(u8 cursorPosition, u8 baseTileNum)
 {
     u16 src[2];
+#if WASM
+    {
+        struct ChooseMoveStruct *moveInfo = (struct ChooseMoveStruct *)(&gBattleBufferA[gActiveBattler][4]);
+        // baseTileNum 0: normal selection. 27/29: move-swapping mode, where the chip
+        // being moved is highlighted and the original slot is outlined.
+        if (baseTileNum == 0)
+            ModHud_DrawMoveChips(moveInfo->moves, cursorPosition, 0xFF);
+        else
+            ModHud_DrawMoveChips(moveInfo->moves, gMultiUsePlayerCursor, gMoveSelectionCursor[gActiveBattler]);
+        return;
+    }
+#endif
     src[0] = baseTileNum + 1;
     src[1] = baseTileNum + 2;
 
@@ -1682,6 +1658,9 @@ static void MoveSelectionCreateCursorAt(u8 cursorPosition, u8 baseTileNum)
 static void MoveSelectionDestroyCursorAt(u8 cursorPosition)
 {
     u16 src[2];
+#if WASM
+    return; // chips are redrawn as a whole
+#endif
     src[0] = 0x1016;
     src[1] = 0x1016;
 
@@ -1692,6 +1671,10 @@ static void MoveSelectionDestroyCursorAt(u8 cursorPosition)
 void ActionSelectionCreateCursorAt(u8 cursorPosition, u8 baseTileNum)
 {
     u16 src[2];
+#if WASM
+    ModHud_DrawActionMenu(cursorPosition, (gBattleTypeFlags & BATTLE_TYPE_SAFARI) != 0);
+    return;
+#endif
     src[0] = 1;
     src[1] = 2;
 
@@ -1702,6 +1685,9 @@ void ActionSelectionCreateCursorAt(u8 cursorPosition, u8 baseTileNum)
 void ActionSelectionDestroyCursorAt(u8 cursorPosition)
 {
     u16 src[2];
+#if WASM
+    return;
+#endif
     src[0] = 0x1016;
     src[1] = 0x1016;
 

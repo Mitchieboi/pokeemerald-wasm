@@ -1,4 +1,7 @@
 #include "global.h"
+#if WASM
+#include "mod/mod_battle_hud.h"
+#endif
 #include "battle.h"
 #include "battle_controllers.h"
 #include "battle_ai_script_commands.h"
@@ -79,9 +82,17 @@ static const struct CompressedSpriteSheet sSpriteSheets_HealthBar[MAX_BATTLERS_C
 
 static const struct SpritePalette sSpritePalettes_HealthBoxHealthBar[2] =
 {
+#if WASM
+    {gModHudCardPalette, TAG_HEALTHBOX_PAL},
+    {gModHudBarPalette, TAG_HEALTHBAR_PAL}
+#else
     {gBattleInterface_BallStatusBarPal, TAG_HEALTHBOX_PAL},
     {gBattleInterface_BallDisplayPal, TAG_HEALTHBAR_PAL}
+#endif
 };
+#if WASM
+static const struct SpritePalette sModHudCardPalette2 = {gModHudCardPalette, TAG_MODHUD_CARD_PAL_2};
+#endif
 
 // code
 void AllocateBattleSpritesData(void)
@@ -754,6 +765,9 @@ void BattleLoadAllHealthBoxesGfxAtOnce(void)
         LoadCompressedSpriteSheet(&sSpriteSheets_DoublesPlayerHealthbox[1]);
         LoadCompressedSpriteSheet(&sSpriteSheets_DoublesOpponentHealthbox[0]);
         LoadCompressedSpriteSheet(&sSpriteSheets_DoublesOpponentHealthbox[1]);
+#if WASM
+        LoadSpritePalette(&sModHudCardPalette2);
+#endif
         numberOfBattlers = MAX_BATTLERS_COUNT;
     }
     for (i = 0; i < numberOfBattlers; i++)
@@ -806,7 +820,12 @@ bool8 BattleLoadAllHealthBoxesGfx(u8 state)
             else if (state == 4)
                 LoadCompressedSpriteSheet(&sSpriteSheets_DoublesOpponentHealthbox[0]);
             else if (state == 5)
+            {
                 LoadCompressedSpriteSheet(&sSpriteSheets_DoublesOpponentHealthbox[1]);
+#if WASM
+                LoadSpritePalette(&sModHudCardPalette2);
+#endif
+            }
             else if (state == 6)
                 LoadCompressedSpriteSheet(&sSpriteSheets_HealthBar[gBattlerPositions[B_BATTLER_0]]);
             else if (state == 7)

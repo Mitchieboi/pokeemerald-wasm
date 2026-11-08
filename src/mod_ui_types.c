@@ -5,12 +5,6 @@
 #include "decompress.h"
 #include "graphics.h"
 #include "pokemon.h"
-#include "battle.h"
-#include "battle_interface.h"
-#include "battle_main.h"
-#include "battle_util.h"
-#include "battle_anim.h"
-#include "constants/battle.h"
 #include "constants/pokemon.h"
 
 #define TYPE_ICON_COUNT (NUMBER_OF_MON_TYPES + 5) // + contest categories in the sheet
@@ -127,115 +121,6 @@ void ModTypeIcon_Destroy(u8 *spriteId)
         *spriteId = SPRITE_NONE;
     }
 }
-
-// --- battle health boxes --------------------------------------------------------
-
-#define sHealthboxId data[0]
-#define sOffsetX data[1]
-#define sOffsetY data[2]
-#define sBattler data[3]
-
-static u8 sHealthboxIcons[MAX_BATTLERS_COUNT][2] = { {SPRITE_NONE, SPRITE_NONE}, {SPRITE_NONE, SPRITE_NONE}, {SPRITE_NONE, SPRITE_NONE}, {SPRITE_NONE, SPRITE_NONE} };
-
-static void SpriteCB_FollowHealthbox(struct Sprite *sprite)
-{
-    struct Sprite *box;
-
-    if (sprite->sBattler >= MAX_BATTLERS_COUNT || gHealthboxSpriteIds[sprite->sBattler] != sprite->sHealthboxId)
-    {
-        DestroySprite(sprite);
-        return;
-    }
-    box = &gSprites[sprite->sHealthboxId];
-    if (!box->inUse)
-    {
-        DestroySprite(sprite);
-        return;
-    }
-    sprite->x = box->x + sprite->sOffsetX;
-    sprite->y = box->y + sprite->sOffsetY;
-    sprite->x2 = box->x2;
-    sprite->y2 = box->y2;
-    sprite->invisible = box->invisible;
-    sprite->oam.priority = box->oam.priority;
-}
-
-static void HealthboxIconOffsets(u8 battler, u8 index, s16 *dx, s16 *dy)
-{
-    bool8 player = GetBattlerSide(battler) == B_SIDE_PLAYER;
-
-    if (!IsDoubleBattle())
-    {
-        // Icons sit just above the box: left-aligned for the opponent, right-aligned for the player.
-        *dy = player ? -24 : -19;
-        *dx = player ? 30 + index * 34 : -20 + index * 34;
-    }
-    else
-    {
-        // Stacked boxes leave no room above/below: put icons beside the box, towards the centre.
-        *dy = -4;
-        *dx = player ? -96 + index * 34 : 76 + index * 34;
-    }
-}
-
-void ModTypeIcons_UpdateHealthbox(u8 healthboxSpriteId, struct Pokemon *mon)
-{
-    u8 battler = gSprites[healthboxSpriteId].data[6]; // hMain_Battler
-    u16 species;
-    u8 types[2];
-    u32 i, count;
-
-    if (battler >= MAX_BATTLERS_COUNT)
-        return;
-    for (i = 0; i < 2; i++)
-        ModTypeIcon_Destroy(&sHealthboxIcons[battler][i]);
-
-    species = GetMonData(mon, MON_DATA_SPECIES);
-    if (species == SPECIES_NONE || species >= NUM_SPECIES || GetMonData(mon, MON_DATA_IS_EGG))
-        return;
-    types[0] = gSpeciesInfo[species].types[0];
-    types[1] = gSpeciesInfo[species].types[1];
-    count = (types[0] == types[1]) ? 1 : 2;
-
-    for (i = 0; i < count; i++)
-    {
-        s16 dx, dy;
-        u8 id;
-        HealthboxIconOffsets(battler, i, &dx, &dy);
-        id = ModTypeIcon_Create(types[i], gSprites[healthboxSpriteId].x + dx, gSprites[healthboxSpriteId].y + dy, 0, gSprites[healthboxSpriteId].oam.priority);
-        if (id == SPRITE_NONE)
-            break;
-        gSprites[id].sHealthboxId = healthboxSpriteId;
-        gSprites[id].sOffsetX = dx;
-        gSprites[id].sOffsetY = dy;
-        gSprites[id].sBattler = battler;
-        gSprites[id].invisible = gSprites[healthboxSpriteId].invisible;
-        gSprites[id].callback = SpriteCB_FollowHealthbox;
-        sHealthboxIcons[battler][i] = id;
-    }
-}
-
-void ModTypeIcons_DestroyHealthbox(u8 healthboxSpriteId)
-{
-    u32 b, i;
-    for (b = 0; b < MAX_BATTLERS_COUNT; b++)
-        for (i = 0; i < 2; i++)
-            if (sHealthboxIcons[b][i] != SPRITE_NONE && gSprites[sHealthboxIcons[b][i]].sHealthboxId == healthboxSpriteId)
-                ModTypeIcon_Destroy(&sHealthboxIcons[b][i]);
-}
-
-void ModTypeIcons_ResetBattle(void)
-{
-    u32 b, i;
-    for (b = 0; b < MAX_BATTLERS_COUNT; b++)
-        for (i = 0; i < 2; i++)
-            sHealthboxIcons[b][i] = SPRITE_NONE;
-}
-
-#undef sHealthboxId
-#undef sOffsetX
-#undef sOffsetY
-#undef sBattler
 
 // --- party menu ---------------------------------------------------------------------
 

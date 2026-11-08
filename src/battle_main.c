@@ -1,7 +1,7 @@
 #include "global.h"
 #if WASM
 #include "mod/mod_nuzlocke.h"
-#include "mod/mod_ui_types.h"
+#include "mod/mod_battle_hud.h"
 #endif
 #if WASM
 #include "mod/mod_randomizer.h"
@@ -632,7 +632,7 @@ static void CB2_InitBattleInternal(void)
 
 #if WASM
     ModNuzlockeOnBattleStart();
-    ModTypeIcons_ResetBattle();
+    ModHud_InitBattle();
 #endif
     SetHBlankCallback(NULL);
     SetVBlankCallback(NULL);

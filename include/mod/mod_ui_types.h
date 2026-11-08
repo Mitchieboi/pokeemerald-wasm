@@ -15,11 +15,6 @@ void ModTypeIcon_Destroy(u8 *spriteId);
 // Forget cached load state (call when a scene resets sprite data).
 void ModTypeIcons_Reset(void);
 
-// Battle: (re)create the icons that follow a battler's health box.
-void ModTypeIcons_UpdateHealthbox(u8 healthboxSpriteId, struct Pokemon *mon);
-void ModTypeIcons_DestroyHealthbox(u8 healthboxSpriteId);
-void ModTypeIcons_ResetBattle(void);
-
 // Party menu: icons for one slot at absolute screen coordinates.
 void ModTypeIcons_PartySlot(u8 slot, u16 species, s16 x, s16 y, u8 spacing);
 void ModTypeIcons_ResetParty(void);
