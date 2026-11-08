@@ -1,4 +1,7 @@
 #include "global.h"
+#if WASM
+#include "mod/mod_randomizer.h"
+#endif
 #include "event_data.h"
 #include "pokemon.h"
 #include "random.h"
@@ -87,6 +90,9 @@ static void CreateInitialRoamerMon(bool16 createLatios)
         ROAMER->species = SPECIES_LATIAS;
     else
         ROAMER->species = SPECIES_LATIOS;
+#if WASM
+    ROAMER->species = ModRandomizeSpecies(MOD_RAND_GROUP_WILD, ROAMER->species);
+#endif
 
     CreateMon(&gEnemyParty[0], ROAMER->species, 40, USE_RANDOM_IVS, FALSE, 0, OT_ID_PLAYER_ID, 0);
     ROAMER->level = 40;

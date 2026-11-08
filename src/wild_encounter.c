@@ -1,4 +1,7 @@
 #include "global.h"
+#if WASM
+#include "mod/mod_randomizer.h"
+#endif
 #include "battle_setup.h"
 #include "battle_pike.h"
 #include "battle_pyramid.h"
@@ -380,6 +383,9 @@ static void CreateWildMon(u16 species, u8 level)
 {
     bool32 checkCuteCharm;
 
+#if WASM
+    species = ModRandomizeWildEncounter(species);
+#endif
     ZeroEnemyPartyMons();
     checkCuteCharm = TRUE;
 

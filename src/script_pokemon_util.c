@@ -1,4 +1,7 @@
 #include "global.h"
+#if WASM
+#include "mod/mod_randomizer.h"
+#endif
 #include "battle.h"
 #include "battle_gfx_sfx_util.h"
 #include "berry.h"
@@ -138,6 +141,9 @@ void CreateScriptedWildMon(u16 species, u8 level, u16 item)
 {
     u8 heldItem[2];
 
+#if WASM
+    species = ModRandomizeSpecies(MOD_RAND_GROUP_WILD, species);
+#endif
     ZeroEnemyPartyMons();
     CreateMon(&gEnemyParty[0], species, level, USE_RANDOM_IVS, 0, 0, OT_ID_PLAYER_ID, 0);
     if (item)

@@ -1,4 +1,7 @@
 #include "global.h"
+#if WASM
+#include "mod/mod_randomizer.h"
+#endif
 #include "bg.h"
 #include "data.h"
 #include "decompress.h"
@@ -352,7 +355,11 @@ u16 GetStarterPokemon(u16 chosenStarterId)
 {
     if (chosenStarterId > STARTER_MON_COUNT)
         chosenStarterId = 0;
+#if WASM
+    return ModRandomizeSpecies(MOD_RAND_GROUP_STARTER, sStarterMon[chosenStarterId]);
+#else
     return sStarterMon[chosenStarterId];
+#endif
 }
 
 static void VblankCB_StarterChoose(void)

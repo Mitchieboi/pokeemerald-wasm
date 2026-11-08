@@ -1,4 +1,10 @@
 #include "global.h"
+#if WASM
+#include "mod/mod_randomizer.h"
+#define TRADE_SPECIES(x) ModRandomizeSpecies(MOD_RAND_GROUP_WILD, x)
+#else
+#define TRADE_SPECIES(x) (x)
+#endif
 #include "malloc.h"
 #include "battle_anim.h"
 #include "battle_interface.h"
@@ -4532,9 +4538,9 @@ static void SpriteCB_BouncingPokeballArrive(struct Sprite *sprite)
 u16 GetInGameTradeSpeciesInfo(void)
 {
     const struct InGameTrade *inGameTrade = &sIngameTrades[gSpecialVar_0x8004];
-    StringCopy(gStringVar1, gSpeciesNames[inGameTrade->requestedSpecies]);
-    StringCopy(gStringVar2, gSpeciesNames[inGameTrade->species]);
-    return inGameTrade->requestedSpecies;
+    StringCopy(gStringVar1, gSpeciesNames[TRADE_SPECIES(inGameTrade->requestedSpecies)]);
+    StringCopy(gStringVar2, gSpeciesNames[TRADE_SPECIES(inGameTrade->species)]);
+    return TRADE_SPECIES(inGameTrade->requestedSpecies);
 }
 
 static void BufferInGameTradeMonName(void)
@@ -4543,7 +4549,7 @@ static void BufferInGameTradeMonName(void)
     const struct InGameTrade *inGameTrade = &sIngameTrades[gSpecialVar_0x8004];
     GetMonData(&gPlayerParty[gSpecialVar_0x8005], MON_DATA_NICKNAME, nickname);
     StringCopy_Nickname(gStringVar1, nickname);
-    StringCopy(gStringVar2, gSpeciesNames[inGameTrade->species]);
+    StringCopy(gStringVar2, gSpeciesNames[TRADE_SPECIES(inGameTrade->species)]);
 }
 
 static void CreateInGameTradePokemonInternal(u8 whichPlayerMon, u8 whichInGameTrade)
@@ -4556,7 +4562,7 @@ static void CreateInGameTradePokemonInternal(u8 whichPlayerMon, u8 whichInGameTr
     u8 mailNum;
     struct Pokemon *pokemon = &gEnemyParty[0];
 
-    CreateMon(pokemon, inGameTrade->species, level, USE_RANDOM_IVS, TRUE, inGameTrade->personality, OT_ID_PRESET, inGameTrade->otId);
+    CreateMon(pokemon, TRADE_SPECIES(inGameTrade->species), level, USE_RANDOM_IVS, TRUE, inGameTrade->personality, OT_ID_PRESET, inGameTrade->otId);
 
     SetMonData(pokemon, MON_DATA_HP_IV, &inGameTrade->ivs[0]);
     SetMonData(pokemon, MON_DATA_ATK_IV, &inGameTrade->ivs[1]);
@@ -4608,7 +4614,7 @@ static void GetInGameTradeMail(struct Mail *mail, const struct InGameTrade *trad
     mail->trainerId[1] = trade->otId >> 16;
     mail->trainerId[2] = trade->otId >> 8;
     mail->trainerId[3] = trade->otId;
-    mail->species = trade->species;
+    mail->species = TRADE_SPECIES(trade->species);
     mail->itemId = trade->heldItem;
 }
 

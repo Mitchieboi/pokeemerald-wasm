@@ -1,4 +1,7 @@
 #include "global.h"
+#if WASM
+#include "mod/mod_randomizer.h"
+#endif
 #include "frontier_util.h"
 #include "battle_setup.h"
 #include "berry.h"
@@ -1687,6 +1690,9 @@ bool8 ScrCmd_givemon(struct ScriptContext *ctx)
     u32 unkParam2 = ScriptReadWord(ctx);
     u8 unkParam3 = ScriptReadByte(ctx);
 
+#if WASM
+    species = ModRandomizeSpecies(MOD_RAND_GROUP_WILD, species);
+#endif
     gSpecialVar_Result = ScriptGiveMon(species, level, item, unkParam1, unkParam2, unkParam3);
     return FALSE;
 }
@@ -1695,6 +1701,9 @@ bool8 ScrCmd_giveegg(struct ScriptContext *ctx)
 {
     u16 species = VarGet(ScriptReadHalfword(ctx));
 
+#if WASM
+    species = ModRandomizeSpecies(MOD_RAND_GROUP_WILD, species);
+#endif
     gSpecialVar_Result = ScriptGiveEgg(species);
     return FALSE;
 }
