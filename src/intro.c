@@ -1,4 +1,7 @@
 #include "global.h"
+#if WASM
+#include "mod/mod_config.h"
+#endif
 #include "main.h"
 #include "palette.h"
 #include "scanline_effect.h"
@@ -1160,6 +1163,9 @@ void CB2_InitCopyrightScreenAfterBootup(void)
             Sav2_ClearSetDefault();
         SetPokemonCryStereo(gSaveBlock2Ptr->optionsSound);
         InitHeap(gHeap, HEAP_SIZE);
+#if WASM
+        ModTryAutoStart();
+#endif
     }
 }
 

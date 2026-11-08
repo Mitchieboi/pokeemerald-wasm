@@ -1,5 +1,8 @@
 #include "global.h"
 #include "new_game.h"
+#if WASM
+#include "mod/mod_config.h"
+#endif
 #include "random.h"
 #include "pokemon.h"
 #include "roamer.h"
@@ -204,6 +207,9 @@ void NewGameInitData(void)
     WipeTrainerNameRecords();
     ResetTrainerHillResults();
     ResetContestLinkResults();
+#if WASM
+    ModOnNewGame();
+#endif
 }
 
 static void ResetMiniGamesRecords(void)

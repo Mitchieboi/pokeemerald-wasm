@@ -22,6 +22,11 @@ const DMA_ENABLE = 0x8000;
 const searchParams = new URLSearchParams(location.search);
 const speedParam = searchParams.get('speed');
 const automate = searchParams.get('automate') === '1';
+// Dev/automation hook: ?modconfig=<hex bytes of struct ModConfig> is written to gModConfig before AgbMain().
+const modConfigParam = searchParams.get('modconfig');
+const modConfig = modConfigParam && /^[0-9a-fA-F]+$/.test(modConfigParam) && modConfigParam.length % 2 === 0
+  ? Uint8Array.from(modConfigParam.match(/../g), (h) => parseInt(h, 16))
+  : null;
 
 const canvas = document.querySelector('#screen');
 const statusEl = document.querySelector('#status');
@@ -349,7 +354,7 @@ async function boot(flash = storedFlash()) {
       .then((r) => Number(r.headers.get('content-length')) || 0).catch(() => 0);
   }
   emu = await createEmulator({
-    canvas, module, flash,
+    canvas, module, flash, modConfig,
     workletUrl: WORKLET_URL,
     speed: initialSpeed(),
     onFlashChanged: storeFlash,
