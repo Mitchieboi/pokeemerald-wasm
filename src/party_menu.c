@@ -1,4 +1,7 @@
 #include "global.h"
+#if WASM
+#include "mod/mod_ui_types.h"
+#endif
 #include "malloc.h"
 #include "battle.h"
 #include "battle_anim.h"
@@ -821,6 +824,9 @@ static void InitPartyMenuBoxes(u8 layout)
         sPartyMenuBoxes[i].pokeballSpriteId = SPRITE_NONE;
         sPartyMenuBoxes[i].statusSpriteId = SPRITE_NONE;
     }
+#if WASM
+    ModTypeIcons_ResetParty();
+#endif
     // The first party mon goes in the left column
     sPartyMenuBoxes[0].infoRects = &sPartyBoxInfoRects[PARTY_BOX_LEFT_COLUMN];
 
@@ -1090,6 +1096,16 @@ static void CreatePartyMonSprites(u8 slot)
         CreatePartyMonIconSprite(&gPlayerParty[slot], &sPartyMenuBoxes[slot], slot);
         CreatePartyMonHeldItemSprite(&gPlayerParty[slot], &sPartyMenuBoxes[slot]);
         CreatePartyMonPokeballSprite(&gPlayerParty[slot], &sPartyMenuBoxes[slot]);
+#if WASM
+        if (gPartyMenu.layout == PARTY_LAYOUT_SINGLE && !GetMonData(&gPlayerParty[slot], MON_DATA_IS_EGG))
+        {
+            // Left column: top strip right of the icon; right column: top row right of the name.
+            if (slot == 0) // narrow box: cards overlap slightly so both fit beside the icon
+                ModTypeIcons_PartySlot(slot, GetMonData(&gPlayerParty[slot], MON_DATA_SPECIES), 48, 29, 26);
+            else
+                ModTypeIcons_PartySlot(slot, GetMonData(&gPlayerParty[slot], MON_DATA_SPECIES), 188, 8 + 24 * (slot - 1) + 6, 34);
+        }
+#endif
         CreatePartyMonStatusSprite(&gPlayerParty[slot], &sPartyMenuBoxes[slot]);
     }
 }

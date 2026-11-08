@@ -1,4 +1,8 @@
 #include "global.h"
+#if WASM
+#include "mod/mod_ui_types.h"
+#include "pokemon_summary_screen.h"
+#endif
 #include "battle.h"
 #include "battle_anim.h"
 #include "battle_arena.h"
@@ -107,6 +111,19 @@ static void MoveSelectionDisplayPpString(void);
 static void MoveSelectionDisplayMoveType(void);
 static void MoveSelectionDisplayMoveNames(void);
 static void HandleMoveSwitching(void);
+static void HandleChooseMoveAfterDma3(void);
+#if WASM
+static void ModMoveInfo_ShowDescription(void);
+static void ModMoveInfo_HideDescription(void);
+static void ModMoveInfo_ShowTypeIcon(u8 type);
+static void SpriteCB_ModMoveTypeIcon(struct Sprite *sprite);
+static bool8 sModDescShown;
+static u8 sModMoveTypeIconId = SPRITE_NONE;
+static const u8 sModText_Empty[] = _("");
+static const u8 sModText_NoValue[] = _("--");
+static const u8 sModText_Slash[] = _(" / ");
+static const u8 sModText_Percent[] = _("%");
+#endif
 static void SwitchIn_HandleSoundAndEnd(void);
 static void WaitForMonSelection(void);
 static void CompleteWhenChoseItem(void);
@@ -523,6 +540,20 @@ static void HandleInputChooseMove(void)
         gPlayerDpadHoldFrames++;
     else
         gPlayerDpadHoldFrames = 0;
+
+#if WASM
+    if (JOY_NEW(L_BUTTON) || JOY_NEW(R_BUTTON))
+    {
+        PlaySE(SE_SELECT);
+        if (sModDescShown)
+            ModMoveInfo_HideDescription();
+        else
+            ModMoveInfo_ShowDescription();
+        return;
+    }
+    if (sModDescShown && (JOY_NEW(A_BUTTON | B_BUTTON | SELECT_BUTTON | START_BUTTON)))
+        ModMoveInfo_HideDescription();
+#endif
 
     if (JOY_NEW(A_BUTTON))
     {
@@ -1521,8 +1552,13 @@ static void MoveSelectionDisplayMoveNames(void)
 
 static void MoveSelectionDisplayPpString(void)
 {
+#if WASM
+    // The move's type icon sits where "PP" used to be; the numbers stay in B_WIN_PP_REMAINING.
+    BattlePutTextOnWindow(sModText_Empty, B_WIN_PP);
+#else
     StringCopy(gDisplayedStringBattle, gText_MoveInterfacePP);
     BattlePutTextOnWindow(gDisplayedStringBattle, B_WIN_PP);
+#endif
 }
 
 static void MoveSelectionDisplayPpNumber(void)
@@ -1546,6 +1582,31 @@ static void MoveSelectionDisplayMoveType(void)
 {
     u8 *txtPtr;
     struct ChooseMoveStruct *moveInfo = (struct ChooseMoveStruct *)(&gBattleBufferA[gActiveBattler][4]);
+#if WASM
+    u16 move = moveInfo->moves[gMoveSelectionCursor[gActiveBattler]];
+    u8 power = gBattleMoves[move].power;
+    u8 accuracy = gBattleMoves[move].accuracy;
+
+    ModMoveInfo_ShowTypeIcon(gBattleMoves[move].type);
+    // "40 / 100%" : power / accuracy ("--" for status moves and never-miss moves)
+    txtPtr = gDisplayedStringBattle;
+    if (power == 0)
+        txtPtr = StringCopy(txtPtr, sModText_NoValue);
+    else
+        txtPtr = ConvertIntToDecimalStringN(txtPtr, power, STR_CONV_MODE_LEFT_ALIGN, 3);
+    txtPtr = StringCopy(txtPtr, sModText_Slash);
+    if (accuracy == 0)
+        txtPtr = StringCopy(txtPtr, sModText_NoValue);
+    else
+    {
+        txtPtr = ConvertIntToDecimalStringN(txtPtr, accuracy, STR_CONV_MODE_LEFT_ALIGN, 3);
+        txtPtr = StringCopy(txtPtr, sModText_Percent);
+    }
+    BattlePutTextOnWindow(gDisplayedStringBattle, B_WIN_MOVE_TYPE);
+    if (sModDescShown)
+        ModMoveInfo_ShowDescription();
+    return;
+#endif
 
     txtPtr = StringCopy(gDisplayedStringBattle, gText_MoveInterfaceType);
     *(txtPtr)++ = EXT_CTRL_CODE_BEGIN;
@@ -1555,6 +1616,58 @@ static void MoveSelectionDisplayMoveType(void)
     StringCopy(txtPtr, gTypeNames[gBattleMoves[moveInfo->moves[gMoveSelectionCursor[gActiveBattler]]].type]);
     BattlePutTextOnWindow(gDisplayedStringBattle, B_WIN_MOVE_TYPE);
 }
+
+#if WASM
+static void ModMoveInfo_ShowDescription(void)
+{
+    struct ChooseMoveStruct *moveInfo = (struct ChooseMoveStruct *)(&gBattleBufferA[gActiveBattler][4]);
+    u16 move = moveInfo->moves[gMoveSelectionCursor[gActiveBattler]];
+
+    if (move == MOVE_NONE || move >= MOVES_COUNT)
+        return;
+    BattlePutTextOnWindow(gMoveDescriptionPointers[move - 1], B_WIN_MOVE_DESCRIPTION);
+    sModDescShown = TRUE;
+}
+
+static void ModMoveInfo_HideDescription(void)
+{
+    if (!sModDescShown)
+        return;
+    sModDescShown = FALSE;
+    ClearWindowTilemap(B_WIN_MOVE_DESCRIPTION);
+    MoveSelectionDisplayMoveNames();
+    MoveSelectionCreateCursorAt(gMoveSelectionCursor[gActiveBattler], 0);
+}
+
+static void SpriteCB_ModMoveTypeIcon(struct Sprite *sprite)
+{
+    u8 battler = sprite->data[0];
+    void (*func)(void) = gBattlerControllerFuncs[battler];
+
+    if (func != HandleInputChooseMove && func != HandleMoveSwitching && func != HandleChooseMoveAfterDma3)
+    {
+        if (sModMoveTypeIconId == sprite - gSprites)
+            sModMoveTypeIconId = SPRITE_NONE;
+        DestroySprite(sprite);
+        return;
+    }
+    sprite->invisible = (func == HandleMoveSwitching);
+}
+
+static void ModMoveInfo_ShowTypeIcon(u8 type)
+{
+    u8 id;
+
+    ModTypeIcon_Destroy(&sModMoveTypeIconId);
+    // Over the former "PP" label: window (21,55) 4x2 tiles, shown at the bottom of the screen.
+    id = ModTypeIcon_Create(type, 184, 136, 0, 0);
+    if (id == SPRITE_NONE)
+        return;
+    gSprites[id].data[0] = gActiveBattler;
+    gSprites[id].callback = SpriteCB_ModMoveTypeIcon;
+    sModMoveTypeIconId = id;
+}
+#endif
 
 static void MoveSelectionCreateCursorAt(u8 cursorPosition, u8 baseTileNum)
 {

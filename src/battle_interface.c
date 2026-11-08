@@ -1,4 +1,7 @@
 #include "global.h"
+#if WASM
+#include "mod/mod_ui_types.h"
+#endif
 #include "battle.h"
 #include "pokemon.h"
 #include "battle_controllers.h"
@@ -1043,6 +1046,9 @@ static void UpdateSpritePos(u8 spriteId, s16 x, s16 y)
 
 void DestoryHealthboxSprite(u8 healthboxSpriteId)
 {
+#if WASM
+    ModTypeIcons_DestroyHealthbox(healthboxSpriteId);
+#endif
     DestroySprite(&gSprites[gSprites[healthboxSpriteId].oam.affineParam]);
     DestroySprite(&gSprites[gSprites[healthboxSpriteId].hMain_HealthBarSpriteId]);
     DestroySprite(&gSprites[healthboxSpriteId]);
@@ -2230,6 +2236,10 @@ void UpdateHealthboxAttribute(u8 healthboxSpriteId, struct Pokemon *mon, u8 elem
         if (elementId == HEALTHBOX_STATUS_ICON || elementId == HEALTHBOX_ALL)
             UpdateStatusIconInHealthbox(healthboxSpriteId);
     }
+#if WASM
+    if (elementId == HEALTHBOX_ALL)
+        ModTypeIcons_UpdateHealthbox(healthboxSpriteId, mon);
+#endif
 }
 
 #define B_EXPBAR_PIXELS 64
