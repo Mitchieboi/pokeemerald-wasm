@@ -1,4 +1,7 @@
 #include "global.h"
+#if WASM
+#include "mod/mod_qol.h"
+#endif
 #include "script.h"
 #include "event_data.h"
 #include "mystery_gift.h"
@@ -352,8 +355,13 @@ void RunOnDiveWarpMapScript(void)
 
 bool8 TryRunOnFrameMapScript(void)
 {
-    u8 *ptr = MapHeaderCheckScriptTable(MAP_SCRIPT_ON_FRAME_TABLE);
+    u8 *ptr;
 
+#if WASM
+    if (ModQolTryStartFastStartScene())
+        return TRUE;
+#endif
+    ptr = MapHeaderCheckScriptTable(MAP_SCRIPT_ON_FRAME_TABLE);
     if (!ptr)
         return FALSE;
 

@@ -1,4 +1,7 @@
 #include "global.h"
+#if WASM
+#include "mod/mod_qol.h"
+#endif
 #include "overworld.h"
 #include "battle_pyramid.h"
 #include "battle_setup.h"
@@ -1539,7 +1542,12 @@ void CB2_NewGame(void)
     PlayTimeCounter_Start();
     ScriptContext_Init();
     UnlockPlayerFieldControls();
+#if WASM
+    // Fast start: the new game begins on Route 101, not in the moving truck.
+    gFieldCallback = ModQolFastStartPending() ? FieldCB_DefaultWarpExit : ExecuteTruckSequence;
+#else
     gFieldCallback = ExecuteTruckSequence;
+#endif
     gFieldCallback2 = NULL;
     DoMapLoadLoop(&gMain.state);
     SetFieldVBlankCallback();

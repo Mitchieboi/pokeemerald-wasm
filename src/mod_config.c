@@ -109,6 +109,7 @@ void ModOnNewGame(void)
     save->runState = (save->settings.nuzlocke & MOD_NUZ_ENABLED) ? MOD_RUN_ACTIVE : MOD_RUN_NONE;
 
     ModQolApplyNewGameDefaults();
+    ModQolSkipLittlerootIntro();
 }
 
 static u8 AsciiToGameChar(char c)

@@ -49,6 +49,9 @@
 #define MOD_RUN_ACTIVE 1
 #define MOD_RUN_FAILED 2
 
+// ModSave.flags
+#define MOD_SAVEF_FAST_START_PENDING (1 << 0) // start the Route 101 Birch rescue on the next overworld frame
+
 #define MOD_ENCOUNTER_BITMAP_BYTES 32 // 256 bits >= MAPSEC_COUNT (214)
 
 struct ModSettings
