@@ -2,9 +2,6 @@
 #include "gba/m4a_internal.h"
 #include "constants/songs.h"
 
-#if WASM
-#include "wasm_sound.h"
-#endif
 
 extern const u8 gCgb3Vol[];
 
@@ -25,209 +22,6 @@ COMMON_DATA struct PokemonCrySong gPokemonCrySong = {0};
 COMMON_DATA u8 gMPlayMemAccArea[0x10] = {0};
 COMMON_DATA struct MusicPlayerInfo gMPlayInfo_SE3 = {0};
 
-#if WASM
-static u16 sWasmMPlayFrames[4];
-static u16 sWasmMPlaySongs[4];
-
-static u8 WasmMPlayIndex(struct MusicPlayerInfo *mplayInfo)
-{
-    if (mplayInfo == &gMPlayInfo_BGM)
-        return WASM_MUSIC_PLAYER_BGM;
-    if (mplayInfo == &gMPlayInfo_SE1)
-        return WASM_MUSIC_PLAYER_SE1;
-    if (mplayInfo == &gMPlayInfo_SE2)
-        return WASM_MUSIC_PLAYER_SE2;
-    if (mplayInfo == &gMPlayInfo_SE3)
-        return WASM_MUSIC_PLAYER_SE3;
-    return 0xFF;
-}
-
-static struct MusicPlayerInfo *WasmMPlayInfoForPlayer(u8 player)
-{
-    switch (player)
-    {
-    case WASM_MUSIC_PLAYER_BGM:
-        return &gMPlayInfo_BGM;
-    case WASM_MUSIC_PLAYER_SE1:
-        return &gMPlayInfo_SE1;
-    case WASM_MUSIC_PLAYER_SE2:
-        return &gMPlayInfo_SE2;
-    case WASM_MUSIC_PLAYER_SE3:
-        return &gMPlayInfo_SE3;
-    }
-
-    return NULL;
-}
-
-static void WasmMPlayInit(struct MusicPlayerInfo *mplayInfo)
-{
-    u8 index;
-
-    if (mplayInfo == NULL)
-        return;
-
-    index = WasmMPlayIndex(mplayInfo);
-    if (index != 0xFF)
-    {
-        sWasmMPlayFrames[index] = 0;
-        sWasmMPlaySongs[index] = MUS_NONE;
-    }
-
-    mplayInfo->ident = ID_NUMBER;
-    mplayInfo->status = 0;
-}
-
-static void WasmMPlayStart(struct MusicPlayerInfo *mplayInfo, u16 frames, u16 songNum)
-{
-    u8 index;
-
-    if (mplayInfo == NULL)
-        return;
-
-    index = WasmMPlayIndex(mplayInfo);
-    if (index != 0xFF)
-    {
-        sWasmMPlayFrames[index] = frames;
-        sWasmMPlaySongs[index] = songNum;
-    }
-
-    mplayInfo->ident = ID_NUMBER;
-    mplayInfo->status = MUSICPLAYER_STATUS_TRACK;
-}
-
-static void WasmMPlayStop(struct MusicPlayerInfo *mplayInfo)
-{
-    u8 index;
-
-    if (mplayInfo == NULL)
-        return;
-
-    index = WasmMPlayIndex(mplayInfo);
-    if (index != 0xFF)
-    {
-        sWasmMPlayFrames[index] = 0;
-        sWasmMPlaySongs[index] = MUS_NONE;
-    }
-
-    mplayInfo->ident = ID_NUMBER;
-    mplayInfo->status = 0;
-}
-
-static void WasmMPlayContinue(struct MusicPlayerInfo *mplayInfo)
-{
-    if (mplayInfo != NULL && mplayInfo->ident == ID_NUMBER)
-        mplayInfo->status = MUSICPLAYER_STATUS_TRACK;
-}
-
-static void WasmMPlayPause(struct MusicPlayerInfo *mplayInfo)
-{
-    if (mplayInfo != NULL && mplayInfo->ident == ID_NUMBER && (mplayInfo->status & MUSICPLAYER_STATUS_TRACK))
-        mplayInfo->status |= MUSICPLAYER_STATUS_PAUSE;
-}
-
-static void WasmMPlayTick(struct MusicPlayerInfo *mplayInfo)
-{
-    u8 index = WasmMPlayIndex(mplayInfo);
-
-    if (index == 0xFF || sWasmMPlayFrames[index] == 0)
-        return;
-
-    sWasmMPlayFrames[index]--;
-    if (sWasmMPlayFrames[index] == 0)
-        WasmMPlayStop(mplayInfo);
-}
-
-static void WasmSongStart(u16 songNum)
-{
-    const struct WasmSongInfo *song;
-
-    if (songNum >= WASM_SONG_COUNT)
-        return;
-
-    song = &gWasmSongInfo[songNum];
-    WasmMPlayStart(WasmMPlayInfoForPlayer(song->player), song->duration, songNum);
-}
-
-static void WasmSongStop(u16 songNum)
-{
-    u8 player;
-    struct MusicPlayerInfo *mplayInfo;
-
-    if (songNum >= WASM_SONG_COUNT)
-        return;
-
-    player = gWasmSongInfo[songNum].player;
-    mplayInfo = WasmMPlayInfoForPlayer(player);
-    if (sWasmMPlaySongs[player] == songNum)
-        WasmMPlayStop(mplayInfo);
-}
-
-void m4aSoundVSync(void) {}
-void m4aSoundVSyncOn(void) {}
-void m4aSoundVSyncOff(void) {}
-void m4aSoundInit(void)
-{
-    SoundInit(&gSoundInfo);
-    WasmMPlayInit(&gMPlayInfo_BGM);
-    WasmMPlayInit(&gMPlayInfo_SE1);
-    WasmMPlayInit(&gMPlayInfo_SE2);
-    WasmMPlayInit(&gMPlayInfo_SE3);
-}
-void m4aSoundMain(void)
-{
-    WasmMPlayTick(&gMPlayInfo_BGM);
-    WasmMPlayTick(&gMPlayInfo_SE1);
-    WasmMPlayTick(&gMPlayInfo_SE2);
-    WasmMPlayTick(&gMPlayInfo_SE3);
-}
-void m4aSoundMode(u32 mode) {}
-void m4aSongNumStart(u16 n) { WasmSongStart(n); }
-void m4aSongNumStartOrChange(u16 n) { WasmSongStart(n); }
-void m4aSongNumStop(u16 n) { WasmSongStop(n); }
-void m4aMPlayAllStop(void)
-{
-    s32 i;
-
-    WasmMPlayStop(&gMPlayInfo_BGM);
-    WasmMPlayStop(&gMPlayInfo_SE1);
-    WasmMPlayStop(&gMPlayInfo_SE2);
-    WasmMPlayStop(&gMPlayInfo_SE3);
-    for (i = 0; i < MAX_POKEMON_CRIES; i++)
-        WasmMPlayStop(&gPokemonCryMusicPlayers[i]);
-}
-void m4aMPlayContinue(struct MusicPlayerInfo *mplayInfo) { WasmMPlayContinue(mplayInfo); }
-void m4aMPlayFadeOut(struct MusicPlayerInfo *mplayInfo, u16 speed) { WasmMPlayStop(mplayInfo); }
-void m4aMPlayFadeOutTemporarily(struct MusicPlayerInfo *mplayInfo, u16 speed) { WasmMPlayPause(mplayInfo); }
-void m4aMPlayFadeIn(struct MusicPlayerInfo *mplayInfo, u16 speed) { WasmMPlayContinue(mplayInfo); }
-void m4aMPlayImmInit(struct MusicPlayerInfo *mplayInfo) {}
-void m4aMPlayStop(struct MusicPlayerInfo *mplayInfo) { WasmMPlayStop(mplayInfo); }
-void m4aMPlayTempoControl(struct MusicPlayerInfo *mplayInfo, u16 tempo) {}
-void m4aMPlayVolumeControl(struct MusicPlayerInfo *mplayInfo, u16 trackBits, u16 volume) {}
-void m4aMPlayPitchControl(struct MusicPlayerInfo *mplayInfo, u16 trackBits, s16 pitch) {}
-void m4aMPlayPanpotControl(struct MusicPlayerInfo *mplayInfo, u16 trackBits, s8 pan) {}
-void m4aMPlayModDepthSet(struct MusicPlayerInfo *mplayInfo, u16 trackBits, u8 modDepth) {}
-void m4aMPlayLFOSpeedSet(struct MusicPlayerInfo *mplayInfo, u16 trackBits, u8 lfoSpeed) {}
-void MPlayContinue(struct MusicPlayerInfo *mplayInfo) { WasmMPlayContinue(mplayInfo); }
-void MPlayFadeOut(struct MusicPlayerInfo *mplayInfo, u16 speed) { WasmMPlayStop(mplayInfo); }
-void MPlayStart(struct MusicPlayerInfo *mplayInfo, struct SongHeader *songHeader) { WasmMPlayStart(mplayInfo, 0, MUS_NONE); }
-void MPlayMain(struct MusicPlayerInfo *mplayInfo) {}
-void MPlayOpen(struct MusicPlayerInfo *mplayInfo, struct MusicPlayerTrack *tracks, u8 trackCount)
-{
-    WasmMPlayInit(mplayInfo);
-    if (mplayInfo != NULL)
-    {
-        mplayInfo->tracks = tracks;
-        mplayInfo->trackCount = trackCount;
-    }
-}
-void MPlayExtender(struct CgbChannel *cgbChans) {}
-void MPlayJumpTableCopy(MPlayFunc *mplayJumpTable) {}
-void SoundInit(struct SoundInfo *soundInfo) { if (soundInfo != NULL) soundInfo->ident = ID_NUMBER; }
-void SoundMain(void) {}
-void SoundMainBTM(void) {}
-u32 MidiKeyToFreq(struct WaveData *wav, u8 key, u8 fineAdjust) { return 0; }
-void SetPokemonCryPriority(u8 val) { gPokemonCrySong.priority = val; }
-#else
 
 u32 MidiKeyToFreq(struct WaveData *wav, u8 key, u8 fineAdjust)
 {
@@ -280,7 +74,11 @@ void m4aSoundInit(void)
 {
     s32 i;
 
+#if !WASM
+    // Copies the ARM mixer (SoundMainRAM) into IWRAM for speed. The wasm port's
+    // mixer is plain C in m4a_wasm.c, so there is no such code blob to relocate.
     CpuCopy32((void *)((s32)SoundMainRAM & ~1), SoundMainRAM_Buffer, sizeof(SoundMainRAM_Buffer));
+#endif
 
     SoundInit(&gSoundInfo);
     MPlayExtender(gCgbChans);
@@ -534,10 +332,12 @@ void MPlayExtender(struct CgbChannel *cgbChans)
     soundInfo->ident = ident;
 }
 
+#if !WASM
 static void UNUSED MusicPlayerJumpTableCopy(void)
 {
     asm("swi 0x2A");
 }
+#endif
 
 void ClearChain(void *x)
 {
@@ -629,11 +429,13 @@ void SampleFreqSet(u32 freq)
 
     m4aSoundVSyncOn();
 
+#if !WASM
     while (*(vu8 *)REG_ADDR_VCOUNT == 159)
         ;
 
     while (*(vu8 *)REG_ADDR_VCOUNT != 159)
         ;
+#endif
 
     REG_TM0CNT_H = TIMER_ENABLE | TIMER_1CLK;
 }
@@ -825,6 +627,14 @@ void MPlayStart(struct MusicPlayerInfo *mplayInfo, struct SongHeader *songHeader
 
     if (mplayInfo->ident != ID_NUMBER)
         return;
+
+#if WASM
+    // The wasm build may link only a subset of songs; gSongTable entries for
+    // songs that were not built resolve to a NULL header. Ignore those rather
+    // than dereferencing address 0.
+    if (songHeader == NULL)
+        return;
+#endif
 
     unk_B = mplayInfo->unk_B;
 
@@ -1988,4 +1798,3 @@ void SetPokemonCryPriority(u8 val)
 {
     gPokemonCrySong.priority = val;
 }
-#endif

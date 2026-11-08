@@ -80,6 +80,64 @@ const keyMap = new Map([
   ['KeyS', 'r'], ['KeyA', 'l'],
 ]);
 
+// SoundInfo layout offsets (see include/gba/m4a_internal.h)
+const SI_PCM_SAMPLES = 16; // s32 pcmSamplesPerVBlank
+const SI_PCM_FREQ    = 20; // s32 pcmFreq (actual sample rate in Hz)
+const SI_PCM_BUFFER  = 848; // s8 pcmBuffer[3168]  left:[0..n) right:[1584..1584+n)
+const PCM_DMA_BUF_SIZE = 1584;
+
+let audioCtx;
+let audioNode;
+let audioReady = false;
+
+async function initAudio() {
+  if (audioReady) return;
+  audioReady = true;
+  audioCtx = new AudioContext();
+  if (audioCtx.state === 'suspended') await audioCtx.resume();
+  await audioCtx.audioWorklet.addModule('/web/audio-worklet.js');
+  audioNode = new AudioWorkletNode(audioCtx, 'pokeemerald-audio', {
+    outputChannelCount: [2],
+  });
+  audioNode.connect(audioCtx.destination);
+  console.log('[audio] ready, sampleRate=', audioCtx.sampleRate);
+}
+
+function feedAudio() {
+  if (!audioNode || !instance) return;
+  const base = instance.exports.gSoundInfo.value;
+  const n = readS32(base + SI_PCM_SAMPLES);
+  const srcRate = readS32(base + SI_PCM_FREQ);
+  if (n <= 0 || n > PCM_DMA_BUF_SIZE) return;
+  if (srcRate <= 0) return;
+
+  const dstRate = audioCtx.sampleRate;
+
+  // Read from the float32 buffers (gWasmPcmL/R) written by WasmSoundMainRAM.
+  // These carry the same ±1.0 range as the s8 pcmBuffer but without 8-bit
+  // quantisation truncation, eliminating the hiss noise floor.
+  const floatPtrL = instance.exports.gWasmPcmL.value;
+  const floatPtrR = instance.exports.gWasmPcmR.value;
+  const rawL = new Float32Array(memory.buffer, floatPtrL, n);
+  const rawR = new Float32Array(memory.buffer, floatPtrR, n);
+
+  // Linear-interpolation resample from srcRate to dstRate
+  const outLen = Math.round(n * dstRate / srcRate);
+  const L = new Float32Array(outLen);
+  const R = new Float32Array(outLen);
+  const step = (n - 1) / Math.max(outLen - 1, 1);
+  for (let i = 0; i < outLen; i++) {
+    const si = i * step;
+    const lo = Math.floor(si);
+    const hi = Math.min(lo + 1, n - 1);
+    const t = si - lo;
+    L[i] = rawL[lo] + t * (rawL[hi] - rawL[lo]);
+    R[i] = rawR[lo] + t * (rawR[hi] - rawR[lo]);
+  }
+
+  audioNode.port.postMessage({ L, R }, [L.buffer, R.buffer]);
+}
+
 const canvas = document.querySelector('#screen');
 const statusEl = document.querySelector('#status');
 const speedButtons = document.querySelectorAll('[data-speed]');
@@ -98,6 +156,7 @@ let memory;
 let u8;
 let u16;
 let u32;
+let s8;
 let statusText = 'loading wasm…';
 let lastFpsUpdate = performance.now();
 let lastTick = performance.now();
@@ -121,6 +180,7 @@ function refreshViews() {
   u8 = new Uint8Array(memory.buffer);
   u16 = new Uint16Array(memory.buffer);
   u32 = new Uint32Array(memory.buffer);
+  s8 = new Int8Array(memory.buffer);
 }
 
 function bytesToBase64(bytes) {
@@ -807,6 +867,7 @@ window.addEventListener('keydown', (event) => {
   const name = keyMap.get(event.code);
   if (!name) return;
   event.preventDefault();
+  initAudio();
   setPressed(name, true);
 });
 
@@ -825,7 +886,7 @@ window.addEventListener('visibilitychange', () => {
 
 document.querySelectorAll('[data-key]').forEach((button) => {
   const name = button.dataset.key;
-  button.addEventListener('pointerdown', (event) => { event.preventDefault(); setPressed(name, true); });
+  button.addEventListener('pointerdown', (event) => { event.preventDefault(); initAudio(); setPressed(name, true); });
   button.addEventListener('pointerup', () => setPressed(name, false));
   button.addEventListener('pointercancel', () => setPressed(name, false));
   button.addEventListener('pointerleave', () => setPressed(name, false));
@@ -916,6 +977,7 @@ function runFrames(frameCount, keyMask = 0) {
     if (keyMask) u16[KEYINPUT >> 1] = KEY_MASK ^ keyMask;
     else writeKeys();
     instance.exports.WasmRunFrame();
+    feedAudio();
     currentFrame++;
     stepPendingPresses();
   }
