@@ -1,6 +1,7 @@
 #include "global.h"
 #if WASM
 #include "mod/mod_config.h"
+#include "mod/mod_qol.h"
 #include "main.h"
 #include "task.h"
 #include "sprite.h"
@@ -107,10 +108,7 @@ void ModOnNewGame(void)
         save->settings = gModConfig.settings;
     save->runState = (save->settings.nuzlocke & MOD_NUZ_ENABLED) ? MOD_RUN_ACTIVE : MOD_RUN_NONE;
 
-    if (save->settings.qol & MOD_QOL_BATTLE_ANIMS_OFF)
-        gSaveBlock2Ptr->optionsBattleSceneOff = TRUE;
-    if (save->settings.qol & MOD_QOL_SET_STYLE)
-        gSaveBlock2Ptr->optionsBattleStyle = OPTIONS_BATTLE_STYLE_SET;
+    ModQolApplyNewGameDefaults();
 }
 
 static u8 AsciiToGameChar(char c)

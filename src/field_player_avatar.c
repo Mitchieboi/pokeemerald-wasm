@@ -1,4 +1,7 @@
 #include "global.h"
+#if WASM
+#include "mod/mod_qol.h"
+#endif
 #include "main.h"
 #include "bike.h"
 #include "event_data.h"
@@ -670,7 +673,11 @@ static void PlayerNotOnBikeMoving(u8 direction, u16 heldKeys)
         return;
     }
 
+#if WASM
+    if (!(gPlayerAvatar.flags & PLAYER_AVATAR_FLAG_UNDERWATER) && (((heldKeys & B_BUTTON) != 0) != ModQolAutoRun()) && FlagGet(FLAG_SYS_B_DASH)
+#else
     if (!(gPlayerAvatar.flags & PLAYER_AVATAR_FLAG_UNDERWATER) && (heldKeys & B_BUTTON) && FlagGet(FLAG_SYS_B_DASH)
+#endif
      && IsRunningDisallowed(gObjectEvents[gPlayerAvatar.objectEventId].currentMetatileBehavior) == 0)
     {
         PlayerRun(direction);

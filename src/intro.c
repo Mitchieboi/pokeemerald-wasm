@@ -1,6 +1,7 @@
 #include "global.h"
 #if WASM
 #include "mod/mod_config.h"
+#include "mod/mod_qol.h"
 #endif
 #include "main.h"
 #include "palette.h"
@@ -1164,7 +1165,8 @@ void CB2_InitCopyrightScreenAfterBootup(void)
         SetPokemonCryStereo(gSaveBlock2Ptr->optionsSound);
         InitHeap(gHeap, HEAP_SIZE);
 #if WASM
-        ModTryAutoStart();
+        if (!ModTryAutoStart() && ModQolSkipIntro())
+            SetMainCallback2(CB2_InitTitleScreen);
 #endif
     }
 }
