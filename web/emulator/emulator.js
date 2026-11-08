@@ -80,6 +80,7 @@ export async function createEmulator(opts) {
   let rafId = 0;
   let speed = 1;
   let lastFiniteSpeed = 1;
+  let measuredSpeed = 0; // smoothed frames-per-realtime ratio, used for audio at unlimited speed
   let currentFrame = 0;
   let gameFrameAccumulator = 0;
   let lastTick = 0;
@@ -126,12 +127,19 @@ export async function createEmulator(opts) {
       if (keyMask) views.u16[KEYINPUT >> 1] = KEY_MASK ^ keyMask;
       else writeKeys();
       instance.exports.WasmRunFrame();
-      audio.feed(instance, memory, bios.readS32);
+      audio.feed(instance, memory, bios.readS32, audioRate());
       currentFrame++;
       input.step();
     }
     views.u16[KEYINPUT >> 1] = KEY_MASK;
     checkFlash();
+  }
+
+  // Playback rate for the audio feed: the nominal multiplier, or at unlimited speed the
+  // measured one (so the ring neither overflows nor starves as the frame rate wanders).
+  function audioRate() {
+    if (speed !== Infinity) return speed;
+    return measuredSpeed > 1 ? measuredSpeed : 1;
   }
 
   function runFramesForTick(elapsedMs) {
@@ -179,6 +187,10 @@ export async function createEmulator(opts) {
       const elapsedMs = Math.min(now - lastTick, 100);
       lastTick = now;
       const frames = runFramesForTick(elapsedMs);
+      if (elapsedMs > 0) {
+        const ratio = frames * (1000 / 60) / elapsedMs;
+        measuredSpeed = measuredSpeed ? measuredSpeed * 0.85 + ratio * 0.15 : ratio;
+      }
       render();
       updateFps(frames);
       rafId = requestAnimationFrame(tick);
@@ -228,7 +240,7 @@ export async function createEmulator(opts) {
   function setSpeed(value) {
     speed = value === Infinity ? Infinity : clamp(Number(value) || 1, MIN_SPEED, MAX_SPEED);
     if (speed !== Infinity) lastFiniteSpeed = speed;
-    audio.setEnabled(speed === 1);
+    measuredSpeed = 0;
     gameFrameAccumulator = 0;
   }
 

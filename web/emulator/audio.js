@@ -18,7 +18,7 @@ export function createAudio({ workletUrl, processorName = 'pokeemerald-audio' } 
   let initPromise = null;
   let muted = false;
   let volume = 1;
-  let enabled = true; // false while fast-forwarding: feeding faster than realtime just overflows the ring
+  let enabled = true;
   let underruns = 0;
   let fed = 0;
 
@@ -52,9 +52,11 @@ export function createAudio({ workletUrl, processorName = 'pokeemerald-audio' } 
 
   /**
    * Push one frame of mixed PCM. `instance`/`memory` are the live wasm objects;
-   * `s32` is a function reading a little-endian int32 at a byte address.
+   * `readS32` reads a little-endian int32 at a byte address. `rate` is the emulation
+   * speed relative to realtime: the frame is time-compressed by that factor so that
+   * fast-forward plays sped-up (higher-pitched) audio instead of overflowing the ring.
    */
-  function feed(instance, memory, readS32) {
+  function feed(instance, memory, readS32, rate = 1) {
     if (!node || !enabled || muted) return;
     const siExport = instance.exports.gSoundInfo;
     const lExport = instance.exports.gWasmPcmL;
@@ -69,8 +71,9 @@ export function createAudio({ workletUrl, processorName = 'pokeemerald-audio' } 
     const rawL = new Float32Array(memory.buffer, lExport.value, n);
     const rawR = new Float32Array(memory.buffer, rExport.value, n);
 
-    // Linear-interpolation resample srcRate -> dstRate.
-    const outLen = Math.round(n * dstRate / srcRate);
+    // Linear-interpolation resample srcRate -> dstRate, compressed by the speed factor.
+    const speed = rate > 0 && Number.isFinite(rate) ? rate : 1;
+    const outLen = Math.max(1, Math.round(n * dstRate / (srcRate * speed)));
     const L = new Float32Array(outLen);
     const R = new Float32Array(outLen);
     const step = (n - 1) / Math.max(outLen - 1, 1);
@@ -96,7 +99,7 @@ export function createAudio({ workletUrl, processorName = 'pokeemerald-audio' } 
     setMuted(value) { muted = Boolean(value); applyGain(); },
     get volume() { return volume; },
     setVolume(value) { volume = Math.min(1, Math.max(0, Number(value) || 0)); applyGain(); },
-    /** Disable feeding (used while fast-forwarding). */
+    /** Disable feeding entirely (audio keeps running, output is silence). */
     setEnabled(value) { enabled = Boolean(value); },
     async suspend() { if (ctx && ctx.state === 'running') await ctx.suspend(); },
     async resume() { if (ctx && ctx.state === 'suspended') await ctx.resume(); },
