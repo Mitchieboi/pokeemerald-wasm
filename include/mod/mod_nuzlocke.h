@@ -3,7 +3,8 @@
 
 // Nuzlocke rules enforced in-game (see MOD_NUZ_* in mod_config.h):
 //  - a party Pokémon that faints is dead: it is released after the battle
-//  - only the first wild encounter per area (MAPSEC) may be caught
+//  - only the first wild encounter per area (MAPSEC) may be caught, counting from when the
+//    rival gives the first Poké Balls (FLAG_ADVENTURE_STARTED)
 //  - caught Pokémon must be nicknamed
 //  - optional dupes clause, shiny clause, level cap and "wipe = run over"
 

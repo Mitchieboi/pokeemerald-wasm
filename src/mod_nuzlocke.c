@@ -136,7 +136,10 @@ void ModNuzlockeOnBattleStart(void)
     sShinyEncounter = IsMonShiny(&gEnemyParty[0]);
     if (Clause(MOD_NUZ_DUPES_CLAUSE) && FamilyCaught(GetMonData(&gEnemyParty[0], MON_DATA_SPECIES)))
         sDupeEncounter = TRUE;
-    sFirstEncounter = !AreaUsed(save, sBattleMapsec) && !sDupeEncounter;
+    // Encounters only start counting once the rival hands over the first Poké Balls after the
+    // Route 103 battle (the lab script sets FLAG_ADVENTURE_STARTED right after). Earlier wild
+    // battles neither use up the area nor allow a catch.
+    sFirstEncounter = FlagGet(FLAG_ADVENTURE_STARTED) && !AreaUsed(save, sBattleMapsec) && !sDupeEncounter;
 }
 
 bool8 ModNuzlockeShouldBlockBall(void)
