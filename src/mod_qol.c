@@ -96,10 +96,12 @@ void ModQolSkipLittlerootIntro(void)
     // PlayersHouse_1F_EventScript_WatchGymBroadcast / SetWatchedBroadcast
     FlagSet(FLAG_SYS_TV_HOME);
     VarSet(VAR_LITTLEROOT_INTRO_STATE, 7);
-    // Met the rival's mom and the rival.
+    // Met the rival's mom and the rival, and the twin at the town exit already asked us
+    // to go and see what is happening (LittlerootTown_EventScript_GoSaveBirchTrigger
+    // sets 2; leaving it at 1 would replay her line on the first trip out of town).
     FlagSet(FLAG_MET_RIVAL_MOM);
     VarSet(VAR_LITTLEROOT_RIVAL_STATE, 3);
-    VarSet(VAR_LITTLEROOT_TOWN_STATE, 1);
+    VarSet(VAR_LITTLEROOT_TOWN_STATE, 2);
 
     // Route 101. Vanilla hides the map name popup on the first frame (state 0 -> 1) and
     // starts the rescue from the triggers at (10,19)/(11,19) once the player steps on
