@@ -1,6 +1,7 @@
 #include "global.h"
 #if WASM
 #include "mod/mod_nuzlocke.h"
+#include "mod/mod_mp_events.h"
 #endif
 #include "battle_setup.h"
 #include "bike.h"
@@ -150,6 +151,8 @@ int ProcessPlayerFieldInput(struct FieldInput *input)
 #if WASM
     if (ModNuzlockeTryShowDeathMessages())
         return TRUE;
+    if (ModMpTryApplyEvents())
+        return TRUE;
 #endif
     if (CheckForTrainersWantingBattle() == TRUE)
         return TRUE;
@@ -166,7 +169,11 @@ int ProcessPlayerFieldInput(struct FieldInput *input)
         if (TryStartStepBasedScript(&position, metatileBehavior, playerDirection) == TRUE)
             return TRUE;
     }
+#if WASM
+    if (input->checkStandardWildEncounter && !ModMpWildBlocked() && CheckStandardWildEncounter(metatileBehavior) == TRUE)
+#else
     if (input->checkStandardWildEncounter && CheckStandardWildEncounter(metatileBehavior) == TRUE)
+#endif
         return TRUE;
     if (input->heldDirection && input->dpadDirection == playerDirection)
     {

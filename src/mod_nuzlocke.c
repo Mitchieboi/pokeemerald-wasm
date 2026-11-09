@@ -3,6 +3,7 @@
 #include "mod/mod_config.h"
 #include "mod/mod_nuzlocke.h"
 #include "mod/mod_randomizer.h"
+#include "mod/mod_mp_events.h"
 #include "battle.h"
 #include "pokemon.h"
 #include "pokedex.h"
@@ -105,6 +106,11 @@ static bool8 IsDead(struct Pokemon *mon)
         && (GetMonData(mon, MON_DATA_UNUSED_RIBBONS) & DEAD_FLAG) != 0;
 }
 
+bool8 ModNuzlockeMonIsDead(struct Pokemon *mon)
+{
+    return IsDead(mon);
+}
+
 static void MarkDead(struct Pokemon *mon)
 {
     u8 val = GetMonData(mon, MON_DATA_UNUSED_RIBBONS) | DEAD_FLAG;
@@ -188,6 +194,7 @@ static void OnWipe(struct ModSave *save)
     for (i = 0; i < PARTY_SIZE; i++)
         if (IsDead(&gPlayerParty[i]))
             ClearDead(&gPlayerParty[i]);
+    ModMpEventsOnWipe();
     if (Clause(MOD_NUZ_WIPE_IS_GAME_OVER))
     {
         save->runState = MOD_RUN_FAILED;
@@ -209,6 +216,7 @@ static void ProcessDeaths(struct ModSave *save)
             GetMonData(mon, MON_DATA_NICKNAME, sPendingNames[sPendingCount++]);
         if (save->deaths < 0xFFFF)
             save->deaths++;
+        ModMpEventsOnDeath(mon);
         ZeroMonData(mon);
         released = TRUE;
     }
@@ -239,6 +247,10 @@ void ModNuzlockeOnBattleEnd(void)
         case B_OUTCOME_CAUGHT:
         case B_OUTCOME_MON_TELEPORTED:
             SetAreaUsed(save, sBattleMapsec);
+            if (gBattleOutcome == B_OUTCOME_CAUGHT)
+                ModMpEventsOnEncounter(MOD_MPEV_RESULT_CAUGHT, sBattleMapsec, &gEnemyParty[0]);
+            else
+                ModMpEventsOnEncounter(MOD_MPEV_RESULT_FAILED, sBattleMapsec, NULL);
             break;
         }
     }

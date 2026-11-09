@@ -326,6 +326,10 @@ static void CB2_SaveAndEndWirelessTrade(void);
 
 #include "data/trade.h"
 
+#if WASM
+extern bool8 gModMpTradeScene;
+#endif
+
 static bool8 SendLinkData(const void *linkData, u32 size)
 {
     if (gPlayerCurrActivity == ACTIVITY_29)
@@ -3348,6 +3352,17 @@ static void BufferTradeSceneStrings(void)
         GetMonData(&gPlayerParty[gSelectedTradeMonPositions[TRADE_PLAYER]], MON_DATA_NICKNAME, name);
         StringCopy_Nickname(gStringVar2, name);
     }
+#if WASM
+    else if (gModMpTradeScene)
+    {
+        // Multiplayer trade: the partner and their Pokémon come from gEnemyParty[0].
+        StringCopy(gStringVar1, gLinkPlayers[1].name);
+        GetMonData(&gEnemyParty[0], MON_DATA_NICKNAME, name);
+        StringCopy_Nickname(gStringVar3, name);
+        GetMonData(&gPlayerParty[gSpecialVar_0x8005], MON_DATA_NICKNAME, name);
+        StringCopy_Nickname(gStringVar2, name);
+    }
+#endif
     else
     {
         ingameTrade = &sIngameTrades[gSpecialVar_0x8004];
@@ -3902,6 +3917,11 @@ static bool8 DoTradeAnim_Cable(void)
                 FREE_AND_SET_NULL(sTradeAnim);
             }
             SetMainCallback2(CB2_ReturnToField);
+#if WASM
+            if (gModMpTradeScene)
+                gModMpTradeScene = FALSE;
+            else
+#endif
             BufferInGameTradeMonName();
         }
         break;
@@ -4399,6 +4419,11 @@ static bool8 DoTradeAnim_Wireless(void)
                 FREE_AND_SET_NULL(sTradeAnim);
             }
             SetMainCallback2(CB2_ReturnToField);
+#if WASM
+            if (gModMpTradeScene)
+                gModMpTradeScene = FALSE;
+            else
+#endif
             BufferInGameTradeMonName();
         }
         break;
@@ -4854,6 +4879,30 @@ void DoInGameTradeScene(void)
     CreateTask(Task_InGameTrade, 10);
     BeginNormalPaletteFade(PALETTES_ALL, 0, 0, 16, RGB_BLACK);
 }
+
+#if WASM
+bool8 gModMpTradeScene;
+
+static void Task_ModMpTrade(u8 taskId)
+{
+    if (!gPaletteFade.active)
+    {
+        SetMainCallback2(CB2_InitInGameTrade);
+        gFieldCallback = FieldCB_ReturnToFieldNoScript;
+        DestroyTask(taskId);
+    }
+}
+
+// Multiplayer trade (mod_mp_events.c): gEnemyParty[0] holds the incoming Pokémon.
+void ModMpStartTradeScene(u8 partyIndex)
+{
+    gSpecialVar_0x8005 = partyIndex;
+    gModMpTradeScene = TRUE;
+    LockPlayerFieldControls();
+    CreateTask(Task_ModMpTrade, 10);
+    BeginNormalPaletteFade(PALETTES_ALL, 0, 0, 16, RGB_BLACK);
+}
+#endif
 
 static void Task_InGameTrade(u8 taskId)
 {

@@ -52,6 +52,9 @@
 // ModSave.flags
 #define MOD_SAVEF_FAST_START_PENDING (1 << 0) // start the Route 101 Birch rescue on the next overworld frame
 
+// ModSave.mpFlags
+#define MOD_MPF_STARTER_REPORTED (1 << 0)
+
 #define MOD_ENCOUNTER_BITMAP_BYTES 32 // 256 bits >= MAPSEC_COUNT (214)
 
 struct ModSettings
@@ -89,7 +92,10 @@ struct ModSave
     /*0x39*/ u8 pad;
     /*0x3A*/ u16 deaths;
     /*0x3C*/ u32 flags;
-    /*0x40*/ u8 reserved[MOD_SAVE_SIZE - 0x40];
+    /*0x40*/ u32 mpLastSeq;    // multiplayer: last lobby event applied to this save (mod_mp_events.c)
+    /*0x44*/ u8 mpFlags;       // MOD_MPF_*
+    /*0x45*/ u8 mpPad[3];
+    /*0x48*/ u8 reserved[MOD_SAVE_SIZE - 0x48];
 }; /* size = 0x180 */
 
 extern struct ModConfig gModConfig;

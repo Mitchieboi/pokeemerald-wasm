@@ -38,5 +38,6 @@ bool8 ModNuzlockeTryShowDeathMessages(void);
 u16 ModNuzlockeDeaths(void);
 u8 ModNuzlockeRunState(void);
 bool8 ModNuzlockeAreaUsed(u16 mapsec);
+bool8 ModNuzlockeMonIsDead(struct Pokemon *mon);
 
 #endif // GUARD_MOD_NUZLOCKE_H

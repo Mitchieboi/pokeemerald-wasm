@@ -57,6 +57,7 @@ u32 ModLayout(u32 key)
     case 23: return MOD_SAVE_MAGIC;
     case 24: return MOD_CONFIG_MAGIC;
     case 25: return offsetof(struct ModConfig, entropy);
+    case 26: return offsetof(struct ModSave, mpLastSeq);
     default: return 0xFFFFFFFF;
     }
 }
