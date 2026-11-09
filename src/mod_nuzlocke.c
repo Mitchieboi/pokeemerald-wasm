@@ -4,6 +4,7 @@
 #include "mod/mod_nuzlocke.h"
 #include "mod/mod_randomizer.h"
 #include "mod/mod_mp_events.h"
+#include "mod/mod_mp_ghost.h"
 #include "battle.h"
 #include "pokemon.h"
 #include "pokedex.h"
@@ -63,6 +64,8 @@ static bool8 IsWildBattle(void)
 // Battles in which a faint counts as a death.
 static bool8 IsDeathBattle(void)
 {
+    if (ModMpGhostBattleActive())
+        return FALSE;
     return !(gBattleTypeFlags & (BATTLE_TYPE_LINK | BATTLE_TYPE_FRONTIER | BATTLE_TYPE_EREADER_TRAINER
                                  | BATTLE_TYPE_TRAINER_HILL | BATTLE_TYPE_WALLY_TUTORIAL | BATTLE_TYPE_FIRST_BATTLE
                                  | BATTLE_TYPE_RECORDED | BATTLE_TYPE_RECORDED_LINK | BATTLE_TYPE_SAFARI));

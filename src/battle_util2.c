@@ -1,4 +1,7 @@
 #include "global.h"
+#if WASM
+#include "mod/mod_mp_ghost.h"
+#endif
 #include "battle.h"
 #include "battle_anim.h"
 #include "battle_controllers.h"
@@ -40,6 +43,11 @@ void AllocateBattleResources(void)
     gBattleAnimBgTileBuffer = AllocZeroed(0x2000);
     gBattleAnimBgTilemapBuffer = AllocZeroed(0x1000);
 
+#if WASM
+    if (ModMpGhostBattleActive())
+        ModMpFillGhostSecretBase();
+    else
+#endif
     if (gBattleTypeFlags & BATTLE_TYPE_SECRET_BASE)
     {
         u16 currSecretBaseId = VarGet(VAR_CURRENT_SECRET_BASE);

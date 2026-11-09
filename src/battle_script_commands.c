@@ -1,6 +1,7 @@
 #include "global.h"
 #if WASM
 #include "mod/mod_nuzlocke.h"
+#include "mod/mod_mp_ghost.h"
 #endif
 #include "battle.h"
 #include "battle_message.h"
@@ -3280,7 +3281,11 @@ static void Cmd_getexp(void)
               | BATTLE_TYPE_FRONTIER
               | BATTLE_TYPE_SAFARI
               | BATTLE_TYPE_BATTLE_TOWER
-              | BATTLE_TYPE_EREADER_TRAINER)))
+              | BATTLE_TYPE_EREADER_TRAINER))
+#if WASM
+            || ModMpGhostBattleActive()
+#endif
+            )
         {
             gBattleScripting.getexpState = 6; // goto last case
         }

@@ -2,6 +2,7 @@
 #if WASM
 #include "mod/mod_randomizer.h"
 #include "mod/mod_nuzlocke.h"
+#include "mod/mod_mp_ghost.h"
 #endif
 #include "malloc.h"
 #include "apprentice.h"
@@ -4604,12 +4605,20 @@ void CreateSecretBaseEnemyParty(struct SecretBase *secretBaseRecord)
 u8 GetSecretBaseTrainerPicIndex(void)
 {
     u8 facilityClass = sSecretBaseFacilityClasses[gBattleResources->secretBase->gender][gBattleResources->secretBase->trainerId[0] % NUM_SECRET_BASE_CLASSES];
+#if WASM
+    if (ModMpGhostBattleActive())
+        facilityClass = ModMpGhostFacilityClass();
+#endif
     return gFacilityClassToPicIndex[facilityClass];
 }
 
 u8 GetSecretBaseTrainerClass(void)
 {
     u8 facilityClass = sSecretBaseFacilityClasses[gBattleResources->secretBase->gender][gBattleResources->secretBase->trainerId[0] % NUM_SECRET_BASE_CLASSES];
+#if WASM
+    if (ModMpGhostBattleActive())
+        facilityClass = ModMpGhostFacilityClass();
+#endif
     return gFacilityClassToTrainerClass[facilityClass];
 }
 

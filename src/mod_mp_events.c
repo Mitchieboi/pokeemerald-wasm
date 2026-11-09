@@ -2,6 +2,7 @@
 #if WASM
 #include "mod/mod_config.h"
 #include "mod/mod_mp_events.h"
+#include "mod/mod_mp_ghost.h"
 #include "mod/mod_nuzlocke.h"
 #include "data.h"
 #include "event_data.h"
@@ -301,6 +302,8 @@ bool8 ModMpTryApplyEvents(void)
         sMessageActive = FALSE;
         return TRUE;
     }
+    if (ModMpTryStartGhostBattle())
+        return TRUE;
     if (sTradeSceneSeq)
     {
         u32 seq = sTradeSceneSeq;

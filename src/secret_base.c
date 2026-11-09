@@ -1,4 +1,7 @@
 #include "global.h"
+#if WASM
+#include "mod/mod_mp_ghost.h"
+#endif
 #include "malloc.h"
 #include "battle.h"
 #include "battle_setup.h"
@@ -1137,6 +1140,10 @@ static u8 GetSecretBaseOwnerType(u8 secretBaseIdx)
 
 const u8 *GetSecretBaseTrainerLoseText(void)
 {
+#if WASM
+    if (ModMpGhostBattleActive())
+        return ModMpGhostLoseText();
+#endif
     u8 ownerType = GetSecretBaseOwnerType(VarGet(VAR_CURRENT_SECRET_BASE));
     if (ownerType == 0)
         return SecretBase_Text_Trainer0Defeated;

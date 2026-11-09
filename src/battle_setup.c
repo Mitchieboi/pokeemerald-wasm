@@ -386,6 +386,14 @@ static void CreateBattleStartTask(u8 transition, u16 song)
 #undef tState
 #undef tTransition
 
+#if WASM
+// Ghost battles (mod_mp_ghost.c)
+void ModMpStartBattleTask(void)
+{
+    CreateBattleStartTask(B_TRANSITION_SHRED_SPLIT, MUS_VS_RIVAL);
+}
+#endif
+
 void BattleSetup_StartWildBattle(void)
 {
     if (GetSafariZoneFlag())
