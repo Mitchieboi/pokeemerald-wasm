@@ -388,9 +388,9 @@ static void CreateBattleStartTask(u8 transition, u16 song)
 
 #if WASM
 // Ghost battles (mod_mp_ghost.c)
-void ModMpStartBattleTask(void)
+void ModMpStartBattleTask(u16 song)
 {
-    CreateBattleStartTask(B_TRANSITION_SHRED_SPLIT, MUS_VS_RIVAL);
+    CreateBattleStartTask(B_TRANSITION_SHRED_SPLIT, song);
 }
 #endif
 

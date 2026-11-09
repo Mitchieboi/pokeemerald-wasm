@@ -21,8 +21,9 @@
 #include "constants/battle.h"
 #include "constants/trainers.h"
 #include "constants/characters.h"
+#include "constants/songs.h"
 
-void ModMpStartBattleTask(void); // battle_setup.c
+void ModMpStartBattleTask(u16 song); // battle_setup.c
 
 struct ModMpGhostStage gModMpGhostStage;
 
@@ -51,13 +52,15 @@ static void SetLevel(struct Pokemon *mon, u8 level)
     CalculateMonStats(mon);
 }
 
-static void ApplyLevelRule(struct Pokemon *mon)
+static void ApplyLevelRule(struct Pokemon *mon, u8 levelMode, u8 levelArg)
 {
     u8 level = GetMonData(mon, MON_DATA_LEVEL);
-    if (sLevelMode == MOD_MP_GHOST_LEVELS_SET && level != sLevelArg)
-        SetLevel(mon, sLevelArg);
-    else if (sLevelMode == MOD_MP_GHOST_LEVELS_CAP && level > sLevelArg)
-        SetLevel(mon, sLevelArg);
+    if (levelArg < MIN_LEVEL || levelArg > MAX_LEVEL)
+        return;
+    if (levelMode == MOD_MP_GHOST_LEVELS_SET && level != levelArg)
+        SetLevel(mon, levelArg);
+    else if (levelMode == MOD_MP_GHOST_LEVELS_CAP && level > levelArg)
+        SetLevel(mon, levelArg);
 }
 
 static void Heal(struct Pokemon *mon)
@@ -100,8 +103,6 @@ bool8 ModMpRequestGhostBattle(void)
     sTrainerId = gModMpGhostStage.trainerId;
     sLevelMode = gModMpGhostStage.levelMode;
     sLevelArg = gModMpGhostStage.levelArg;
-    if (sLevelArg < MIN_LEVEL || sLevelArg > MAX_LEVEL)
-        sLevelMode = MOD_MP_GHOST_LEVELS_AS_IS;
     sResult = 0;
     sState = MOD_MP_GHOST_PENDING;
     return TRUE;
@@ -133,11 +134,21 @@ bool8 ModMpGhostBattleActive(void)
     return sState == MOD_MP_GHOST_BATTLE;
 }
 
-static void CB2_EndGhostBattle(void)
+// Player battles change nothing: the party, money and bag are put back afterwards.
+void ModMpSnapshotPlayer(void)
 {
     u32 i;
+    for (i = 0; i < PARTY_SIZE; i++)
+        sSavedParty[i] = gPlayerParty[i];
+    sSavedMoney = GetMoney(&gSaveBlock1Ptr->money);
+    memcpy(sSavedItems, gSaveBlock1Ptr->bagPocket_Items, sizeof(sSavedItems));
+    memcpy(sSavedBalls, gSaveBlock1Ptr->bagPocket_PokeBalls, sizeof(sSavedBalls));
+    memcpy(sSavedBerries, gSaveBlock1Ptr->bagPocket_Berries, sizeof(sSavedBerries));
+}
 
-    sResult = gBattleOutcome ? gBattleOutcome : B_OUTCOME_DREW;
+void ModMpRestorePlayer(void)
+{
+    u32 i;
     for (i = 0; i < PARTY_SIZE; i++)
         gPlayerParty[i] = sSavedParty[i];
     CalculatePlayerPartyCount();
@@ -145,12 +156,36 @@ static void CB2_EndGhostBattle(void)
     memcpy(gSaveBlock1Ptr->bagPocket_Items, sSavedItems, sizeof(sSavedItems));
     memcpy(gSaveBlock1Ptr->bagPocket_PokeBalls, sSavedBalls, sizeof(sSavedBalls));
     memcpy(gSaveBlock1Ptr->bagPocket_Berries, sSavedBerries, sizeof(sSavedBerries));
-    sState = MOD_MP_GHOST_DONE;
+}
 
+// Both sides start fresh; fallen Nuzlocke Pokémon stay fallen.
+void ModMpPreparePartyForBattle(struct Pokemon *party, u8 levelMode, u8 levelArg)
+{
+    u32 i;
+    for (i = 0; i < PARTY_SIZE; i++)
+    {
+        struct Pokemon *mon = &party[i];
+        if (GetMonData(mon, MON_DATA_SPECIES) == SPECIES_NONE || GetMonData(mon, MON_DATA_IS_EGG) || ModNuzlockeMonIsDead(mon))
+            continue;
+        ApplyLevelRule(mon, levelMode, levelArg);
+        Heal(mon);
+    }
+}
+
+void ModMpReturnToFieldAfterBattle(void)
+{
     CpuFill16(0, (void *)(BG_PLTT), BG_PLTT_SIZE);
     ResetOamRange(0, 128);
     gFieldCallback = FieldCB_ReturnToFieldNoScriptCheckMusic;
     SetMainCallback2(CB2_ReturnToField);
+}
+
+static void CB2_EndGhostBattle(void)
+{
+    sResult = gBattleOutcome ? gBattleOutcome : B_OUTCOME_DREW;
+    ModMpRestorePlayer();
+    sState = MOD_MP_GHOST_DONE;
+    ModMpReturnToFieldAfterBattle();
 }
 
 bool8 ModMpTryStartGhostBattle(void)
@@ -160,29 +195,12 @@ bool8 ModMpTryStartGhostBattle(void)
     if (sState != MOD_MP_GHOST_PENDING)
         return FALSE;
 
-    for (i = 0; i < PARTY_SIZE; i++)
-        sSavedParty[i] = gPlayerParty[i];
-    sSavedMoney = GetMoney(&gSaveBlock1Ptr->money);
-    memcpy(sSavedItems, gSaveBlock1Ptr->bagPocket_Items, sizeof(sSavedItems));
-    memcpy(sSavedBalls, gSaveBlock1Ptr->bagPocket_PokeBalls, sizeof(sSavedBalls));
-    memcpy(sSavedBerries, gSaveBlock1Ptr->bagPocket_Berries, sizeof(sSavedBerries));
-
-    // Both sides start fresh; fallen Nuzlocke Pokémon stay fallen.
-    for (i = 0; i < PARTY_SIZE; i++)
-    {
-        struct Pokemon *mon = &gPlayerParty[i];
-        if (GetMonData(mon, MON_DATA_SPECIES) == SPECIES_NONE || GetMonData(mon, MON_DATA_IS_EGG) || ModNuzlockeMonIsDead(mon))
-            continue;
-        ApplyLevelRule(mon);
-        Heal(mon);
-    }
+    ModMpSnapshotPlayer();
+    ModMpPreparePartyForBattle(gPlayerParty, sLevelMode, sLevelArg);
     ZeroEnemyPartyMons();
     for (i = 0; i < sTeamCount; i++)
-    {
         gEnemyParty[i] = sTeam[i];
-        ApplyLevelRule(&gEnemyParty[i]);
-        Heal(&gEnemyParty[i]);
-    }
+    ModMpPreparePartyForBattle(gEnemyParty, sLevelMode, sLevelArg);
 
     sState = MOD_MP_GHOST_BATTLE;
     gBattleTypeFlags = BATTLE_TYPE_TRAINER | BATTLE_TYPE_SECRET_BASE;
@@ -191,7 +209,7 @@ bool8 ModMpTryStartGhostBattle(void)
     LockPlayerFieldControls();
     FreezeObjectEvents();
     StopPlayerAvatar();
-    ModMpStartBattleTask();
+    ModMpStartBattleTask(MUS_VS_RIVAL);
     return TRUE;
 }
 

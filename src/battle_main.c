@@ -1,5 +1,8 @@
 #include "global.h"
 #if WASM
+#include "mod/mod_mp_link.h"
+#endif
+#if WASM
 #include "mod/mod_nuzlocke.h"
 #include "mod/mod_battle_hud.h"
 #endif
@@ -2312,6 +2315,10 @@ static void EndLinkBattleInSteps(void)
                 battlerCount = 2;
 
             for (i = 0; i < battlerCount && (gLinkPlayers[i].version & 0xFF) == VERSION_EMERALD; i++);
+#if WASM
+            if (ModMpLinkActive())
+                i = 0; // battles between players online aren't recorded
+#endif
 
             if (!gSaveBlock2Ptr->frontier.disableRecordBattle && i == battlerCount)
             {

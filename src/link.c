@@ -1,4 +1,8 @@
 #include "global.h"
+#if WASM
+#include "mod/mod_mp_link.h"
+#define NET_LINK ModMpLinkActive()
+#endif
 #include "m4a.h"
 #include "malloc.h"
 #include "reload_save.h"
@@ -370,6 +374,13 @@ static void Task_TriggerHandshake(u8 taskId)
 
 void OpenLink(void)
 {
+#if WASM
+    if (NET_LINK)
+    {
+        ModMpLinkOpenLink();
+        return;
+    }
+#endif
     int i;
 
     if (!gWirelessCommType)
@@ -403,6 +414,13 @@ void OpenLink(void)
 
 void CloseLink(void)
 {
+#if WASM
+    if (NET_LINK)
+    {
+        ModMpLinkCloseLink();
+        return;
+    }
+#endif
     gReceivedRemoteLinkPlayers = FALSE;
     if (gWirelessCommType)
         LinkRfu_Shutdown();
@@ -755,6 +773,10 @@ void ClearLinkCallback_2(void)
 
 u8 GetLinkPlayerCount(void)
 {
+#if WASM
+    if (NET_LINK)
+        return 2;
+#endif
     if (gWirelessCommType)
         return Rfu_GetLinkPlayerCount();
 
@@ -1025,6 +1047,10 @@ static void UNUSED SendBerryBlenderNoSpaceForPokeblocks(void)
 
 u8 GetMultiplayerId(void)
 {
+#if WASM
+    if (NET_LINK)
+        return ModMpLinkMultiplayerId();
+#endif
     if (gWirelessCommType == TRUE)
         return Rfu_GetMultiplayerId();
 
@@ -1041,6 +1067,10 @@ u8 BitmaskAllOtherLinkPlayers(void)
 
 bool8 SendBlock(u8 unused, const void *src, u16 size)
 {
+#if WASM
+    if (NET_LINK)
+        return ModMpLinkSendBlock(src, size);
+#endif
     if (gWirelessCommType == TRUE)
         return Rfu_InitBlockSend(src, size);
 
@@ -1063,6 +1093,10 @@ bool8 SendBlockRequest(u8 blockReqType)
 
 bool8 IsLinkTaskFinished(void)
 {
+#if WASM
+    if (NET_LINK)
+        return ModMpLinkTaskFinished();
+#endif
     if (gWirelessCommType == TRUE)
         return IsLinkRfuTaskFinished();
 
@@ -1071,6 +1105,10 @@ bool8 IsLinkTaskFinished(void)
 
 u8 GetBlockReceivedStatus(void)
 {
+#if WASM
+    if (NET_LINK)
+        ModMpLinkDeliver();
+#endif
     if (gWirelessCommType == TRUE)
         return Rfu_GetBlockReceivedStatus();
 
@@ -1303,6 +1341,10 @@ static u8 UNUSED GetSavedMultiplayerId(void)
 
 bool8 DoesLinkPlayerCountMatchSaved(void)
 {
+#if WASM
+    if (NET_LINK)
+        return TRUE;
+#endif
     int i;
     u32 count = 0;
 
@@ -1369,11 +1411,19 @@ void ResetLinkPlayerCount(void)
 
 u8 GetLinkPlayerCount_2(void)
 {
+#if WASM
+    if (NET_LINK)
+        return 2;
+#endif
     return EXTRACT_PLAYER_COUNT(gLinkStatus);
 }
 
 bool8 IsLinkMaster(void)
 {
+#if WASM
+    if (NET_LINK)
+        return ModMpLinkMultiplayerId() == 0;
+#endif
     if (gWirelessCommType)
         return Rfu_IsMaster();
 
@@ -1404,6 +1454,13 @@ void SetCloseLinkCallbackAndType(u16 type)
 
 void SetCloseLinkCallback(void)
 {
+#if WASM
+    if (NET_LINK)
+    {
+        ModMpLinkSetClose();
+        return;
+    }
+#endif
     if (gWirelessCommType == TRUE)
     {
         Rfu_SetCloseLinkCallback();
@@ -1521,6 +1578,13 @@ static void LinkCB_WaitCloseLinkWithJP(void)
 
 void SetLinkStandbyCallback(void)
 {
+#if WASM
+    if (NET_LINK)
+    {
+        ModMpLinkSetStandby();
+        return;
+    }
+#endif
     if (gWirelessCommType == TRUE)
     {
         Rfu_SetLinkStandbyCallback();

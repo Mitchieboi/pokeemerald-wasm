@@ -1,4 +1,7 @@
 #include "global.h"
+#if WASM
+#include "mod/mod_mp_link.h"
+#endif
 #include "crt0.h"
 #include "malloc.h"
 #include "link.h"
@@ -397,6 +400,9 @@ static void VBlankIntr(void)
     gPcmDmaCounter = gSoundInfo.pcmDmaCounter;
 
     m4aSoundMain();
+#if WASM
+    ModMpLinkTick();
+#endif
     TryReceiveLinkBattleData();
 
     if (!gMain.inBattle || !(gBattleTypeFlags & (BATTLE_TYPE_LINK | BATTLE_TYPE_FRONTIER | BATTLE_TYPE_RECORDED)))

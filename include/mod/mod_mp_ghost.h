@@ -37,6 +37,12 @@ u32 ModMpGhostBattleState(void);
 u32 ModMpTakeGhostBattleResult(void);
 bool8 ModMpGhostBattleActive(void);
 
+// Shared with live battles (mod_mp_link.c)
+void ModMpSnapshotPlayer(void);
+void ModMpRestorePlayer(void);
+void ModMpPreparePartyForBattle(struct Pokemon *party, u8 levelMode, u8 levelArg);
+void ModMpReturnToFieldAfterBattle(void);
+
 // Hooks
 bool8 ModMpTryStartGhostBattle(void);  // overworld input (via ModMpTryApplyEvents)
 void ModMpFillGhostSecretBase(void);    // battle resources allocated (battle_util2.c)
