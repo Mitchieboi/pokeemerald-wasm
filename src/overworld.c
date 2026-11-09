@@ -1,6 +1,7 @@
 #include "global.h"
 #if WASM
 #include "mod/mod_qol.h"
+#include "mod/mod_mp.h"
 #endif
 #include "overworld.h"
 #include "battle_pyramid.h"
@@ -1472,6 +1473,9 @@ static void OverworldBasic(void)
     AnimateSprites();
     CameraUpdate();
     UpdateCameraPanning();
+#if WASM
+    ModMpOverworldTick();
+#endif
     BuildOamBuffer();
     UpdatePaletteFade();
     UpdateTilesetAnimations();
